@@ -1,0 +1,42 @@
+%% LyX 2.3.7 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[french]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\makeatletter
+\addto\extrasfrench{%
+   \providecommand{\og}{\leavevmode\flqq~}%
+   \providecommand{\fg}{\ifdim\lastskip>\z@\unskip\fi~\frqq}%
+}
+
+\makeatother
+\begin{document}
+\title{Exemple de petit fichier \LaTeX}
+\author{Philippe Helluy}
+\maketitle
+\begin{abstract}
+Ceci est un exemple minimal de fichier \LaTeX{} en français pour tester
+\texttt{trsltx}.
+\end{abstract}
+
+\section{Objectifs}
+
+L'objectif du projet trsltx est de réaliser un outil pour traduire
+des documents \LaTeX{} d'une langue à une autre en conservant la syntaxe.
+Le document peut contenir des formules en ligne comme $x=\sqrt{2}$
+ou hors ligne comme
+\begin{equation}
+\mathbf{A}=\left[\begin{array}{cc}
+1 & 2\\
+2 & 1
+\end{array}\right].\label{eq:matrice}
+\end{equation}
+Il doit pouvoir aussi faire des références aux étiquettes existante
+comme (\ref{eq:matrice}) sans casser les dépendances.
+
+\section{Conclusion}
+
+L'objectif est-il rempli ? Si ce document compile et semble écrit
+en anglais, peut-être !
+\end{document}

@@ -1,0 +1,5 @@
+Translate the following <lang_in> scientific text, formatted with LateX, into <lang_out>.
+Keep the LateX syntax and formulas. The results must compile without errors with pdflatex.
+Give only the result without preliminaries. 
+Enclose the resulting LateX source between \begin{latex_en} and \end{latex_en}
+Here is the <lang_in> LateX source:

@@ -8,17 +8,8 @@
 // needed includes for handling arguments of the command line
 use std::env;
 
-// list of known languages: en, fr, es, de, it, pt, ru
+use trsltx::Trsltx;
 
-const LANGUAGES : [(&str,&str); 7] = [
-    ("en", "english"),
-    ("fr", "french"),
-    ("es", "spanish"),
-    ("de", "german"),
-    ("it", "italian"),
-    ("pt", "portuguese"),
-    ("ru", "russian")
-];
 
 
 
@@ -49,9 +40,16 @@ fn main() {
     let input_lang = input_file[1];
     let output_lang = output_file[1];
 
-    println!("input language: {:?}", input_lang);
-    println!("input file name: {:?}", input_file_name);
-    println!("output language: {:?}", output_lang);
-    println!("output file name: {:?}", output_file_name);
+    // println!("input language: {:?}", input_lang);
+    // println!("input file name: {:?}", input_file_name);
+    // println!("output language: {:?}", output_lang);
+    // println!("output file name: {:?}", output_file_name);
+
+    let mut trsltx = Trsltx::new(input_lang, output_lang, input_file_name, output_file_name);
+
+    trsltx.read_file();
+    trsltx.write_file();
+
+    //println!("{:?}", trsltx);
 
 }
