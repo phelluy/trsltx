@@ -34,3 +34,11 @@ cp ./target/release/trsltx .
 ```
 
 The translation is done with a Large Language Model (LLM). It is possible that some LateX errors occur in the translation by the LLM. You have to correct them by hand.
+
+The original LaTeX file has to be split in not too long chunks by using markers
+`%trsltx-split` in the .tex file on  single lines.
+
+It is also possible to mark a region that should not be translated with the markers
+`%trsltx-begin-ignore` and `%trsltx-end-ignore` on single lines. Ignored regions should not contain
+`%trsltx-split` markers. See the file `test/simple_fr.tex` for an example.
+

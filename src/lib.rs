@@ -152,10 +152,14 @@ impl Trsltx {
 
     pub fn translate_chunks(&mut self) {
         let mut body_translated = String::new();
+        let numchunks = self.chunks.len();
+        let mut count = 0;
         for (chunk, t) in self.chunks.iter() {
             match t {
                 ChunkType::Translate => {
-                    let trs_chunk = translate_chunk(
+                    count += 1;
+                    println!("Translating chunk {} of {}", count, numchunks);
+                    let trs_chunk = translate_one_chunk(
                         chunk.as_str(),
                         self.input_lang.as_str(),
                         self.output_lang.as_str(),
@@ -163,6 +167,8 @@ impl Trsltx {
                     body_translated.push_str(trs_chunk.as_str());
                 }
                 ChunkType::Unchanged => {
+                    count += 1;
+                    println!("Copying chunk {} of {}", count, numchunks);
                     body_translated.push_str(chunk.as_str());
                 }
             }
@@ -224,7 +230,7 @@ pub fn get_lang_name(lang: &str) -> String {
 /// the preprompt is in the file "prompt.txt"
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
-fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
+fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     // get the preprompt
     let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read preprompt");
 
@@ -251,7 +257,7 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     use serde_json::Value;
 
     let question = format!("{}{}", prompt, chunk);
-    println!("{:?}", question);
+    //println!("{:?}", question);
     let req = json!({
         "messages": [question],
         "temperature": 0.5,
@@ -271,7 +277,7 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     let trs_chunk: String = match res {
         Ok(resp) => {
             let text = resp["text"].as_str().expect("Failed to get text");
-            println!("{:?}", text);
+            //println!("{:?}", text);
             text.to_string()
         }
         Err(e) => {
