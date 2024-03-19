@@ -47,6 +47,14 @@ impl Trsltx {
         //println!("{:?}", self.afterword);
     }
 
+    pub fn translate(&mut self) {
+        self.body_translated = translate_chunk(
+            self.body.as_str(),
+            self.input_lang.as_str(),
+            self.output_lang.as_str(),
+        );
+    }
+
     pub fn write_file(&self) {
         let mut output_file =
             std::fs::File::create(&self.output_file_name).expect("cannot create file");
@@ -56,13 +64,9 @@ impl Trsltx {
         output_file
             .write_all("\\newenvironment{trsltx}{}{}\n\\begin{document}".as_bytes())
             .expect("cannot write to file");
-        let body_out = translate_chunk(
-            self.body.as_str(),
-            self.input_lang.as_str(),
-            self.output_lang.as_str(),
-        );
+
         output_file
-            .write_all(body_out.as_bytes())
+            .write_all(self.body_translated.as_bytes())
             .expect("cannot write to file");
         output_file
             .write_all("\\end{document}".as_bytes())
@@ -73,12 +77,8 @@ impl Trsltx {
     }
 }
 
-// translate a latex chunk using the textsynth LLM api
-// the prepromt is in the fille "prompt.txt"
-fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
-    // get the preprompt
-    let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read file");
-
+// get the long language name fro mthe short two-letter one
+pub fn get_lang_name(lang: &str) -> String {
     // list of known languages: en, fr, es, de, it, pt, ru
     const LANGUAGES: [(&str, &str); 7] = [
         ("en", "English"),
@@ -96,25 +96,41 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
         lang_dict.insert(k.to_string(), v.to_string());
     }
 
-    let input_lang = lang_dict.get(input_lang).unwrap();
-    let output_lang = lang_dict.get(output_lang).unwrap();
+    let lang = lang_dict.get(lang).unwrap();
+    lang.to_string()
 
-    // in this prompt, replace <lang_in> by the input language and <lang_out> by the output language
-    prompt = prompt.replace("<lang_in>", input_lang);
-    prompt = prompt.replace("<lang_out>", output_lang);
+}
 
-    //println!("{:?}", prompt);
+// translate a latex chunk using the textsynth LLM api
+// the preprompt is in the file "prompt.txt"
+// the api key is in the file "api_key.txt"
+fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
+    // get the preprompt
+    let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read file");
+
+    let input_lang = get_lang_name(input_lang).to_string();
+    let output_lang = get_lang_name(output_lang).to_string();
+
+    // in the prompt, replace <lang_in> by the input language and <lang_out> by the output language
+    prompt = prompt.replace("<lang_in>", input_lang.as_str());
+    prompt = prompt.replace("<lang_out>", output_lang.as_str());
+
+
 
     // get the api key from the file "api_key.txt"
-    let api_key = std::fs::read_to_string("api_key.txt").expect("cannot read file");
-    //println!("{:?}", api_key);
+    let api_key = std::fs::read_to_string("api_key.txt").expect("You have to provide an api key in the file api_key.txt");
 
+    // call the textsynth REST API
     let url = "https://api.textsynth.com/v1/engines/falcon_40B-chat/chat";
     let max_tokens = 1000;
 
     use serde_json::json;
     use serde_json::Value;
+
+    // useful for stopping the program for debug with exit(0)
+    #[allow(unused_imports)]
     use std::process;
+
     let question = format!("{}{}", prompt, chunk);
     println!("{:?}", question);
     let req = json!({
@@ -140,23 +156,17 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
         .json::<Value>();
 
 
-    //let res = res.send();
-
-    let mut trs_chunk = String::new();
-
-    match res {
+    let trs_chunk: String = match res {
         Ok(resp) => {
-            //println!("Réponse: {:?}", resp);
             let text = resp["text"].as_str().expect("Failed to get text");
-            // let text: String = resp.json().unwrap();
             println!("{:?}", text);
-            trs_chunk = text.to_string();
+            text.to_string()
         }
         Err(e) => {
             println!("Request error: {:?}", e);
-            process::exit(1);
+            "".to_string()
         }
-    }
+    };
 
     trs_chunk
 }
