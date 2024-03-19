@@ -1,13 +1,13 @@
 //! # trsltx
 //! Tools for automatic translation of texts written with LaTeX.
-//! 
+//!
 //!  You need first to get a valid API key from [https://textsynth.com/](https://textsynth.com/)
 //! and put it in a file named `api_key.txt` in the working directory or in an environment variable by
-//! 
+//!
 //!  ```bash
 //! export TEXTSYNTH_API_KEY=<the_api_key>
 //! ```
-//! 
+//!
 //!  Usage: go in the `trsltx` directory and run
 //!
 //! ```bash
@@ -17,7 +17,7 @@
 //! By default the French LaTeX file `test/simple_fr.tex` is translated into english in `test/simple_en.tex`.
 //!
 //! The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language name.
-//! Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`. 
+//! Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`.
 //!
 //! For changing the default behavior do, for instance
 //!
@@ -36,13 +36,12 @@
 //! The translation is done with a Large Language Model (LLM). It is possible that some LateX errors occur
 //! in the translation by the LLM. You have to correct them by hand.use std::io::Write;
 
-
-//use std::collections::HashMap;
-// unused warning
-//#[allow(unused_imports)]
-//use std::process::exit;
+// For debug: useful for stopping the program with exit(0)
+#[allow(unused_imports)]
+use std::process::exit;
 
 use std::io::Write;
+
 #[derive(Debug)]
 pub struct Trsltx {
     input_lang: String,
@@ -76,11 +75,22 @@ impl Trsltx {
     pub fn read_file(&mut self) {
         let input_file = std::fs::read_to_string(&self.input_file_name).expect("cannot read file");
         let mut input_file = input_file.split("\\begin{document}");
-        self.preamble = input_file.next().unwrap().to_string();
-        let mut input_file = input_file.next().unwrap().split("\\end{document}");
-        self.body = input_file.next().unwrap().to_string();
-        self.afterword = input_file.next().unwrap().to_string();
-        //println!("{:?}", self.afterword);
+        self.preamble = input_file
+            .next()
+            .expect("Error in extracting body.")
+            .to_string();
+        let mut input_file = input_file
+            .next()
+            .expect("No \\begin{document} in the tex file.")
+            .split("\\end{document}");
+        self.body = input_file
+            .next()
+            .expect("Error in extracting body.")
+            .to_string();
+        self.afterword = input_file
+            .next()
+            .expect("No \\end{document} in the tex file.")
+            .to_string();
     }
 
     pub fn translate(&mut self) {
@@ -97,6 +107,11 @@ impl Trsltx {
         output_file
             .write_all(self.preamble.as_bytes())
             .expect("cannot write to file");
+
+        // write the translated body
+        // create the latex env trsltx because the prompt
+        // requires that the translatex chunk is enclosed between
+        // \begin{trsltx} and \end{trsltx}
         output_file
             .write_all("\\newenvironment{trsltx}{}{}\n\\begin{document}".as_bytes())
             .expect("cannot write to file");
@@ -113,9 +128,9 @@ impl Trsltx {
     }
 }
 
-/// get the long language name from the short two-letter one
+/// Get the long language name from the short two-letter one
 pub fn get_lang_name(lang: &str) -> String {
-    // list of known languages: en, fr, es, de, it, pt, ru
+    // list of known languages
     const LANGUAGES: [(&str, &str); 7] = [
         ("en", "English"),
         ("fr", "French"),
@@ -132,9 +147,8 @@ pub fn get_lang_name(lang: &str) -> String {
         lang_dict.insert(k.to_string(), v.to_string());
     }
 
-    let lang = lang_dict.get(lang).unwrap();
+    let lang = lang_dict.get(lang).expect("Unknown language");
     lang.to_string()
-
 }
 
 /// translate a latex chunk using the textsynth LLM api
@@ -142,8 +156,9 @@ pub fn get_lang_name(lang: &str) -> String {
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
+
     // get the preprompt
-    let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read file");
+    let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read preprompt");
 
     let input_lang = get_lang_name(input_lang).to_string();
     let output_lang = get_lang_name(output_lang).to_string();
@@ -151,8 +166,6 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     // in the prompt, replace <lang_in> by the input language and <lang_out> by the output language
     prompt = prompt.replace("<lang_in>", input_lang.as_str());
     prompt = prompt.replace("<lang_out>", output_lang.as_str());
-
-
 
     // get the api key from the file "api_key.txt" or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     //let api_key = std::fs::read_to_string("api_key.txt").expect("You have to provide an api key in the file api_key.txt");
@@ -168,10 +181,6 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     use serde_json::json;
     use serde_json::Value;
 
-    // useful for stopping the program for debug with exit(0)
-    #[allow(unused_imports)]
-    use std::process;
-
     let question = format!("{}{}", prompt, chunk);
     println!("{:?}", question);
     let req = json!({
@@ -179,12 +188,6 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
         "temperature": 0.5,
         "max_tokens": max_tokens
     });
-    // println!("{:?}", serde_json::to_string(&req).unwrap());
-    // exit(0);
-    // let client = reqwest::blocking::Client::new();
-    // let res = client.post(&format!("{}/v1/engines/{}/chat", url, model))
-    //     .header(AUTHORIZATION, format!("Bearer {}", api_key))
-    //     .json(&req);
 
     let client = reqwest::blocking::Client::new();
     let res = client
@@ -195,7 +198,6 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
         .send()
         .expect("Failed to send request")
         .json::<Value>();
-
 
     let trs_chunk: String = match res {
         Ok(resp) => {

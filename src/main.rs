@@ -15,9 +15,6 @@ struct Cli {
 
 use trsltx::Trsltx;
 
-
-
-
 fn main() {
     let args = Cli::parse();
     let input_file = args.input_file.as_str();
@@ -32,6 +29,9 @@ fn main() {
     assert!(output_file.ends_with(".tex"));
 
     // removes the .tex suffix
+    // before check that length is > 4
+    assert!(input_file.len() > 4);
+    assert!(output_file.len() > 4);
     let input_file = &input_file[..input_file.len()-4];
     let output_file = &output_file[..output_file.len()-4];
 
@@ -50,7 +50,5 @@ fn main() {
     trsltx.read_file();
     trsltx.translate();
     trsltx.write_file();
-
-    //println!("{:?}", trsltx);
 
 }
