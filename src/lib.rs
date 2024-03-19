@@ -103,7 +103,8 @@ pub fn get_lang_name(lang: &str) -> String {
 
 // translate a latex chunk using the textsynth LLM api
 // the preprompt is in the file "prompt.txt"
-// the api key is in the file "api_key.txt"
+// the api key is in the file "api_key.txt" or
+// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     // get the preprompt
     let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read file");
@@ -117,8 +118,12 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
 
 
 
-    // get the api key from the file "api_key.txt"
-    let api_key = std::fs::read_to_string("api_key.txt").expect("You have to provide an api key in the file api_key.txt");
+    // get the api key from the file "api_key.txt" or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
+    //let api_key = std::fs::read_to_string("api_key.txt").expect("You have to provide an api key in the file api_key.txt");
+    let api_key = match std::fs::read_to_string("api_key.txt") {
+        Ok(api_key) => api_key,
+        Err(_) => std::env::var("TEXTSYNTH_API_KEY").expect("You have to provide an api key in the file api_key.txt or by export TEXTSYNTH_API_KEY=api_key"),
+    };
 
     // call the textsynth REST API
     let url = "https://api.textsynth.com/v1/engines/falcon_40B-chat/chat";
