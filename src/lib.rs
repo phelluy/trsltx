@@ -54,7 +54,7 @@ impl Trsltx {
             .write_all(self.preamble.as_bytes())
             .expect("cannot write to file");
         output_file
-            .write_all("\\begin{document}".as_bytes())
+            .write_all("\\newenvironment{trsltx}{}{}\n\\begin{document}".as_bytes())
             .expect("cannot write to file");
         let body_out = translate_chunk(
             self.body.as_str(),
