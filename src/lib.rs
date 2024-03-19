@@ -1,6 +1,12 @@
 // simple library for managing translations of latex files
 use std::io::Write;
 
+
+//use std::collections::HashMap;
+// unused warning
+//#[allow(unused_imports)]
+//use std::process::exit;
+
 #[derive(Debug)]
 pub struct Trsltx {
     input_lang: String,
@@ -56,7 +62,7 @@ impl Trsltx {
             self.output_lang.as_str(),
         );
         output_file
-            .write_all(self.body.as_bytes())
+            .write_all(body_out.as_bytes())
             .expect("cannot write to file");
         output_file
             .write_all("\\end{document}".as_bytes())
@@ -103,39 +109,54 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     let api_key = std::fs::read_to_string("api_key.txt").expect("cannot read file");
     //println!("{:?}", api_key);
 
-    let url = "https://api.textsynth.com";
-    let model = "mixtral_47B_instruct";
+    let url = "https://api.textsynth.com/v1/engines/falcon_40B-chat/chat";
     let max_tokens = 1000;
 
-    use reqwest::header::AUTHORIZATION;
     use serde_json::json;
-    use std::io::prelude::*;
+    use serde_json::Value;
     use std::process;
-    //let question = format!("{}{}", prompt, chunk);
+    let question = format!("{}{}", prompt, chunk);
     println!("{:?}", question);
     let req = json!({
         "messages": [question],
         "temperature": 0.5,
         "max_tokens": max_tokens
     });
+    // println!("{:?}", serde_json::to_string(&req).unwrap());
+    // exit(0);
+    // let client = reqwest::blocking::Client::new();
+    // let res = client.post(&format!("{}/v1/engines/{}/chat", url, model))
+    //     .header(AUTHORIZATION, format!("Bearer {}", api_key))
+    //     .json(&req);
+
     let client = reqwest::blocking::Client::new();
-    let res = client.post(&format!("{}/v1/engines/{}/chat", url, model))
-        .header(AUTHORIZATION, format!("Bearer {}", api_key))
+    let res = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .header("Authorization", format!("Bearer {}", api_key))
         .json(&req)
-        .send();
+        .send()
+        .expect("Failed to send request")
+        .json::<Value>();
 
-        match res {
-            Ok(resp) => {
-                println!("{:?}", resp);
-                let text: String = resp.json().unwrap();
-                println!("{:?}", text);
-            },
-            Err(e) => {
-                println!("Request error: {:?}", e);
-                process::exit(1);
-            }
+
+    //let res = res.send();
+
+    let mut trs_chunk = String::new();
+
+    match res {
+        Ok(resp) => {
+            //println!("Réponse: {:?}", resp);
+            let text = resp["text"].as_str().expect("Failed to get text");
+            // let text: String = resp.json().unwrap();
+            println!("{:?}", text);
+            trs_chunk = text.to_string();
         }
+        Err(e) => {
+            println!("Request error: {:?}", e);
+            process::exit(1);
+        }
+    }
 
-    let trs_chunk = String::new();
     trs_chunk
 }
