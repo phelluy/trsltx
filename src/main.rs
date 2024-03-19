@@ -46,6 +46,7 @@ fn main() {
     let mut trsltx = Trsltx::new(input_lang, output_lang, input_file_name, output_file_name);
 
     trsltx.read_file();
+    trsltx.extract_chunks();
     trsltx.translate();
     trsltx.write_file();
 }

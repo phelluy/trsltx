@@ -42,6 +42,12 @@ use std::process::exit;
 
 use std::io::Write;
 
+#[derive(Debug, Clone)]
+enum ChunkType {
+    Translate,
+    Unchanged,
+}
+
 #[derive(Debug)]
 pub struct Trsltx {
     input_lang: String,
@@ -52,6 +58,7 @@ pub struct Trsltx {
     body: String,
     afterword: String,
     body_translated: String,
+    chunks: Vec<(String, ChunkType)>,
 }
 
 impl Trsltx {
@@ -70,6 +77,7 @@ impl Trsltx {
             body: String::new(),
             afterword: String::new(),
             body_translated: String::new(),
+            chunks: Vec::new(),
         }
     }
     pub fn read_file(&mut self) {
@@ -94,11 +102,72 @@ impl Trsltx {
     }
 
     pub fn translate(&mut self) {
-        self.body_translated = translate_chunk(
-            self.body.as_str(),
-            self.input_lang.as_str(),
-            self.output_lang.as_str(),
-        );
+        // self.body_translated = translate_chunk(
+        //     self.body.as_str(),
+        //     self.input_lang.as_str(),
+        //     self.output_lang.as_str(),
+        // );
+        self.translate_chunks();
+    }
+
+    // extract the chunks to be translated from the body
+    // the chunks are separated by the string "%trsltx-split\n"
+    // or are enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n" 
+    // by defaults, the chunks are marked as Translate
+    // the chunks enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
+    // are marked as Unchanged
+    pub fn extract_chunks(&mut self) {
+        let toscan = self.body.clone();
+        // add %trsltx-split before each %trsltx-begin-ignore
+        let toscan = toscan.replace("%trsltx-begin-ignore", "%trsltx-split\n%trsltx-begin-ignore");
+        // add %trsltx-split after each %trsltx-end-ignore
+        let toscan = toscan.replace("%trsltx-end-ignore", "%trsltx-end-ignore\n%trsltx-split");
+        // split the body into chunks
+        let chunks = toscan.split("%trsltx-split\n");
+        for chunk in chunks {
+            if chunk.contains("%trsltx-begin-ignore") {
+                self.chunks.push((chunk.to_string(), ChunkType::Unchanged));
+            } else {
+                self.chunks.push((chunk.to_string(), ChunkType::Translate));
+            }
+        }
+
+        let numchunks = self.chunks.len();
+
+        for i in 0..numchunks {
+            let (mut s, t) = self.chunks[i].clone();
+            let chunk_length = s.len();
+            assert!(chunk_length < 1000, "Chunk too long");
+            match t {
+                ChunkType::Unchanged => {
+                    s = s.replace("%trsltx-begin-ignore\n","");
+                    s = s.replace("%trsltx-end-ignore\n", "");
+                    self.chunks[i] = (s, ChunkType::Unchanged);
+                }
+                _ => (),
+            }
+        }
+        println!("{:?}", self.chunks);
+    }
+
+    pub fn translate_chunks(&mut self) {
+        let mut body_translated = String::new();
+        for (chunk, t) in self.chunks.iter() {
+            match t {
+                ChunkType::Translate => {
+                    let trs_chunk = translate_chunk(
+                        chunk.as_str(),
+                        self.input_lang.as_str(),
+                        self.output_lang.as_str(),
+                    );
+                    body_translated.push_str(trs_chunk.as_str());
+                }
+                ChunkType::Unchanged => {
+                    body_translated.push_str(chunk.as_str());
+                }
+            }
+        }
+        self.body_translated = body_translated;
     }
 
     pub fn write_file(&self) {
@@ -211,5 +280,8 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
         }
     };
 
-    trs_chunk
+    // remove the text before \begin{trsltx} and after \end{trsltx}
+    let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>()[1];
+    let trs_chunk = trs_chunk.split("\\end{trsltx}").collect::<Vec<&str>>()[0];
+    trs_chunk.to_string()
 }
