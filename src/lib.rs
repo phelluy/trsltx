@@ -169,7 +169,9 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
 
     // get the api key from the file "api_key.txt" or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
-        Ok(api_key) => api_key,
+        // if the file exists, get the api key from the file
+        // remove the trailing newline
+        Ok(api_key) => api_key.trim().to_string(),
         Err(_) => std::env::var("TEXTSYNTH_API_KEY").expect("You have to provide an api key in the file api_key.txt or by export TEXTSYNTH_API_KEY=api_key"),
     };
 
