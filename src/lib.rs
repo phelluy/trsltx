@@ -156,7 +156,6 @@ pub fn get_lang_name(lang: &str) -> String {
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
-
     // get the preprompt
     let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read preprompt");
 
@@ -170,7 +169,7 @@ fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     // get the api key from the file "api_key.txt" or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
         // if the file exists, get the api key from the file
-        // remove the trailing newline
+        // removing the spaces and newlines with trim()
         Ok(api_key) => api_key.trim().to_string(),
         Err(_) => std::env::var("TEXTSYNTH_API_KEY").expect("You have to provide an api key in the file api_key.txt or by export TEXTSYNTH_API_KEY=api_key"),
     };
