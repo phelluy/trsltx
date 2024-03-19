@@ -1,5 +1,40 @@
-// simple library for managing translations of latex files
-use std::io::Write;
+//! # trsltx
+//! Tools for automatic translation of texts written with LaTeX.
+//! 
+//!  You need first to get a valid API key from [https://textsynth.com/](https://textsynth.com/)
+//! and put it in a file named `api_key.txt` in the working directory or in an environment variable by
+//! 
+//!  ```bash
+//! export TEXTSYNTH_API_KEY=<the_api_key>
+//! ```
+//! 
+//!  Usage: go in the `trsltx` directory and run
+//!
+//! ```bash
+//! cargo run
+//! ```
+//!
+//! By default the French LaTeX file `test/simple_fr.tex` is translated into english in `test/simple_en.tex`.
+//!
+//! The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language name.
+//! Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`. 
+//!
+//! For changing the default behavior do, for instance
+//!
+//! ```bash
+//! cargo run -- -i test/simple_fr.tex -o test/simple_de.tex
+//! ```
+//!
+//! Or
+//!
+//! ```bash
+//! cargo build --release
+//! cp ./target/release/trsltx .
+//! ./trsltx -i test/simple_fr.tex -o test/simple_de.tex
+//! ```
+//!
+//! The translation is done with a Large Language Model (LLM). It is possible that some LateX errors occur
+//! in the translation by the LLM. You have to correct them by hand.use std::io::Write;
 
 
 //use std::collections::HashMap;
@@ -7,6 +42,7 @@ use std::io::Write;
 //#[allow(unused_imports)]
 //use std::process::exit;
 
+use std::io::Write;
 #[derive(Debug)]
 pub struct Trsltx {
     input_lang: String,
@@ -77,7 +113,7 @@ impl Trsltx {
     }
 }
 
-// get the long language name fro mthe short two-letter one
+/// get the long language name from the short two-letter one
 pub fn get_lang_name(lang: &str) -> String {
     // list of known languages: en, fr, es, de, it, pt, ru
     const LANGUAGES: [(&str, &str); 7] = [
@@ -101,10 +137,10 @@ pub fn get_lang_name(lang: &str) -> String {
 
 }
 
-// translate a latex chunk using the textsynth LLM api
-// the preprompt is in the file "prompt.txt"
-// the api key is in the file "api_key.txt" or
-// in the environment variable "TEXTSYNTH_API_KEY"
+/// translate a latex chunk using the textsynth LLM api
+/// the preprompt is in the file "prompt.txt"
+/// the api key is in the file "api_key.txt" or
+/// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
     // get the preprompt
     let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read file");

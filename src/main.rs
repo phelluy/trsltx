@@ -1,3 +1,6 @@
+//# trsltx
+//Tools for automatic translation of texts written with LaTeX.use clap::Parser;
+//The Rust doc is in the `src/lib.rs` file.
 
 
 use clap::Parser;
