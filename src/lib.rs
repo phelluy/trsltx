@@ -168,7 +168,7 @@ impl Trsltx {
                 }
                 ChunkType::Unchanged => {
                     count += 1;
-                    println!("Copying chunk {} of {}", count, numchunks);
+                    println!("    Copying chunk {} of {}", count, numchunks);
                     body_translated.push_str(chunk.as_str());
                 }
             }
@@ -250,7 +250,7 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Stri
     };
 
     // call the textsynth REST API
-    let url = "https://api.textsynth.com/v1/engines/falcon_40B-chat/chat";
+    let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/chat";
     let max_tokens = 1000;
 
     use serde_json::json;
