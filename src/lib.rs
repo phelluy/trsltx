@@ -112,14 +112,17 @@ impl Trsltx {
 
     // extract the chunks to be translated from the body
     // the chunks are separated by the string "%trsltx-split\n"
-    // or are enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n" 
+    // or are enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
     // by defaults, the chunks are marked as Translate
     // the chunks enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
     // are marked as Unchanged
     pub fn extract_chunks(&mut self) {
         let toscan = self.body.clone();
         // add %trsltx-split before each %trsltx-begin-ignore
-        let toscan = toscan.replace("%trsltx-begin-ignore", "%trsltx-split\n%trsltx-begin-ignore");
+        let toscan = toscan.replace(
+            "%trsltx-begin-ignore",
+            "%trsltx-split\n%trsltx-begin-ignore",
+        );
         // add %trsltx-split after each %trsltx-end-ignore
         let toscan = toscan.replace("%trsltx-end-ignore", "%trsltx-end-ignore\n%trsltx-split");
         // split the body into chunks
@@ -140,8 +143,8 @@ impl Trsltx {
             assert!(chunk_length < 1000, "Chunk too long");
             match t {
                 ChunkType::Unchanged => {
-                    s = s.replace("%trsltx-begin-ignore\n","");
-                    s = s.replace("%trsltx-end-ignore\n", "");
+                    // s = s.replace("%trsltx-begin-ignore\n", "");
+                    // s = s.replace("%trsltx-end-ignore\n", "");
                     self.chunks[i] = (s, ChunkType::Unchanged);
                 }
                 _ => (),
@@ -164,6 +167,10 @@ impl Trsltx {
                         self.input_lang.as_str(),
                         self.output_lang.as_str(),
                     );
+                    // append the split message
+                    if count > 1 {
+                        body_translated.push_str("%trsltx-split\n");
+                    }
                     body_translated.push_str(trs_chunk.as_str());
                 }
                 ChunkType::Unchanged => {
@@ -173,6 +180,9 @@ impl Trsltx {
                 }
             }
         }
+        // last cleaining:
+        // remove the %trsltx-split immediately following %trsltx-end-ignore
+        body_translated = body_translated.replace("%trsltx-end-ignore\n%trsltx-split\n", "%trsltx-end-ignore\n");
         self.body_translated = body_translated;
     }
 
