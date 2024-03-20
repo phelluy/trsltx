@@ -33,7 +33,8 @@ cp ./target/release/trsltx .
 ./trsltx -i test/simple_fr.tex -o test/simple_de.tex
 ```
 
-The translation is done with a Large Language Model (LLM). It is possible that some LateX errors occur in the translation by the LLM. You have to correct them by hand.
+The translation is completed using a Large Language Model (LLM) and may contain some LaTeX errors.
+Therefore, it is essential to review and manually correct the translated code as necessary.
 
 The original LaTeX file has to be split in not too long chunks by using markers
 `%trsltx-split` in the .tex file on  single lines.
