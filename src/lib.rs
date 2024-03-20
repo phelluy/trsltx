@@ -129,7 +129,10 @@ impl Trsltx {
         let chunks = toscan.split("%trsltx-split\n");
         for chunk in chunks {
             if chunk.contains("%trsltx-begin-ignore") {
+                assert!(chunk.contains("%trsltx-end-ignore"), "Ignored chunks cannot be split.");
                 self.chunks.push((chunk.to_string(), ChunkType::Unchanged));
+            } else if chunk.contains("%trsltx-end-ignore") {
+                panic!("Unbalanced %trsltx-end-ignore");
             } else {
                 self.chunks.push((chunk.to_string(), ChunkType::Translate));
             }
@@ -180,7 +183,7 @@ impl Trsltx {
                 }
             }
         }
-        // last cleaining:
+        // last cleaning:
         // remove the %trsltx-split immediately following %trsltx-end-ignore
         body_translated = body_translated.replace("%trsltx-end-ignore\n%trsltx-split\n", "%trsltx-end-ignore\n");
         self.body_translated = body_translated;
