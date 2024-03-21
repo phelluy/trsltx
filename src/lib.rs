@@ -248,6 +248,7 @@ pub fn get_lang_name(lang: &str) -> String {
 /// one chat operation with the textsynth LLM
 /// send the question
 /// and returns an answer
+#[allow(dead_code)]
 fn chat_with_ts(question: &str) -> String {
     // get the api key from the file "api_key.txt" or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
@@ -397,10 +398,10 @@ mod tests {
 
     #[test]
     fn test_chat_with_ts() {
-        let question = "What is the capital of France?";
+        let question = "Q: Is Madrid the capital of Spain ?\nA:";
         let answer = chat_with_ts(question);
         println!("{:?}", answer);
-        assert!(answer.contains("Paris"));
+        assert!(answer.contains("Madrid"));
     }
     #[test]
     fn test_complete_grammar_ts() {
@@ -411,5 +412,6 @@ r#"root   ::= "yes" | "no" | "Yes" | "No""#;
         println!("{:?}", grammar);
         let answer = complete_with_ts(question, Some(grammar));
         println!("{:?}", answer);
+        assert!(answer.contains("Yes") || answer.contains("yes"));
     }
 }
