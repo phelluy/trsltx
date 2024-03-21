@@ -262,6 +262,7 @@ The syntax tree follows the following grammar:
            |  "%"<NOTNL>"\n" (node: COMMENT)
            |  <REGULAR>+     (node: TEXT)
     <construct> := "\begin{"ENVNAME"}" <stuff> "\end{"ENVNAME"}" (node: ENV)
+                |  "{" <stuff> "}"   (node: GROUP)
                 |  "\[" <stuff> "\]" (node: DMATH)
                 |  "$$" <stuff> "$$" (node: same)
                 |  "\(" <stuff> "\)" (node: TMATH)
