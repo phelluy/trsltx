@@ -310,6 +310,8 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
 
     // call the textsynth REST API
     let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/completions";
+    //let url = "https://api.textsynth.com/v1/engines/llama2_70B/completions";
+    
     let max_tokens = 1000;
 
     use serde_json::json;
@@ -376,8 +378,11 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Stri
     prompt = prompt.replace("<lang_in>", input_lang.as_str());
     prompt = prompt.replace("<lang_out>", output_lang.as_str());
 
-    let question = format!("{}{}", prompt, chunk);
-    let trs_chunk = chat_with_ts(question.as_str());
+    let question = format!("{}\n{}\nA:\n", prompt, chunk);
+    // println!("{:?}", question);
+    // exit(0);
+    //let trs_chunk = chat_with_ts(question.as_str());
+    let trs_chunk = complete_with_ts(&question.as_str(), None);
 
     // remove the text before \begin{trsltx} and after \end{trsltx}
     let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>()[1];
@@ -399,9 +404,9 @@ mod tests {
     }
     #[test]
     fn test_complete_grammar_ts() {
-        let question = "Q: la capitale de la France est-elle Paris? Répondre uniquement par oui ou non avec des caractères en minuscule.\nA:";
+        let question = "Q: Is Madrid the capital of Spain ?\nA:";
         let grammar = 
-r#"root   ::= "oui" | "non""#;
+r#"root   ::= "yes" | "no" | "Yes" | "No""#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
         let answer = complete_with_ts(question, Some(grammar));
