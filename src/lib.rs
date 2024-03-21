@@ -336,7 +336,7 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
             })
         }
     };
-    // println!("Req= {:?}", req);
+    println!("Req= {:?}", req);
 
     let client = reqwest::blocking::Client::new();
     let res = client
@@ -414,5 +414,24 @@ r#"root   ::= "yes" | "no""#;
         //let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
         assert!(answer.contains("No") || answer.contains("no"));
+    }
+    #[test]
+    fn test_2complete_grammar_ts() {
+        let question =
+r#"
+Question: 
+What is the capital of France?
+Give a false answer.
+
+Answer:
+
+"#;
+        let grammar = 
+r#"root   ::= [A-Z][a-z]*"#;
+        let grammar = grammar.to_string();
+        println!("{:?}", grammar);
+        let answer = complete_with_ts(question, Some(grammar));
+        // let answer = complete_with_ts(question, None);
+        println!("{:?}", answer);
     }
 }
