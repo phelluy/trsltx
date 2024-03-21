@@ -405,7 +405,7 @@ mod tests {
     }
     #[test]
     fn test_complete_grammar_ts() {
-        let question = "Q: Is Madrid the capital of Spain ?\nA:\n";
+        let question = "Q: Is Tokyo the capital of Spain ?\nA:\n";
         let grammar = 
 r#"root   ::= "yes" | "no""#;
         let grammar = grammar.to_string();
@@ -413,6 +413,6 @@ r#"root   ::= "yes" | "no""#;
         let answer = complete_with_ts(question, Some(grammar));
         //let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
-        assert!(answer.contains("Yes") || answer.contains("yes"));
+        assert!(answer.contains("No") || answer.contains("no"));
     }
 }
