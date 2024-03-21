@@ -1,0 +1,21 @@
+# W3C EBNF grammar to (partially) parse LaTeX
+
+root ::= pre "\\begin{document}" stuff "\\end{document}" post
+pre  ::= .*
+post ::= .*
+
+stuff ::= (atom | construct)*
+
+atom ::= command | comment | text
+
+construct ::= env | dmath | tmath | group
+
+command ::= "\\"cname
+env ::= "\\begin{"cname"}" stuff "\\end{"cname"}"
+dmath ::= ("$$" stuff "$$") | ("\\[" stuff "\\]")
+tmath ::= ("$" stuff "$") | ("\\(" stuff "\\)")
+group ::= "{" stuff "}"
+
+name ::= [a-zA-Z]+
+comment ::= "%".*"\n"
+text ::= [^\\{}$%]+

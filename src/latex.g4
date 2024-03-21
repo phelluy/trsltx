@@ -1,4 +1,4 @@
-grammar ltx_grammar;
+grammar latex;
 
 latex: '\\begin{document}' stuff '\\end{document}';
 
