@@ -1,14 +1,13 @@
 grammar latex;
 
-latex: '\\begin{document}' stuff '\\end{document}';
+latex: stuff;
 
 stuff: (atom | construct)* ;
 
-atom: command | comment | text ;
+atom: command | comment | text ;  /* sans majuscules */
 
-construct:  dmath | tmath | group ;
+construct:  dmath | tmath | group | env;
 
-command: '\\' name ;
 
 dmath: '$$' stuff '$$' | '\\[' stuff '\\]' ;
 
@@ -16,8 +15,13 @@ tmath: '$' stuff '$' | '\\(' stuff '\\)' ;
 
 group: '{' stuff '}' ;
 
-comment: '%' '()*?' '\n' ;
+env: Begin stuff End ;
 
-name: '[a-zA-Z]+' ;
-
-text: ~'\\' ~'{' ~'}' ~'$' ~'%' + ;
+comment: Comment ;
+Comment: '%'~[\n]*'\n' ;
+command: Command;
+Command: '\\'[\\a-zA-Z]+ ;
+text: Text ;
+Text: (~[\\{}$%])+ ;
+Begin: '\\begin{'[a-zA-Z]+'*'?'}' ;
+End: '\\end{'[a-zA-Z]+'*'?'}' ;
