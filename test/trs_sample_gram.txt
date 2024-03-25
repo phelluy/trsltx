@@ -1,0 +1,18 @@
+Question: Translate the following French scientific text, formatted with LateX, into English.
+Keep the LateX syntax and formulas. The results must compile without errors with pdflatex.
+Give only the result without preliminaries. 
+Enclose the resulting LateX source between \begin{trsltx} and \end{trsltx}
+Here is the French LateX source:
+
+\item Considérons également la fraction
+\begin{equation}
+\frac{x}{\sqrt{y}} \label{eq:formule}
+\end{equation}
+Il faut pouvoir aussi faire des références aux étiquettes existante
+comme (\ref{eq:autre_formule}) ou  sans casser les dépendances.
+
+\section{Conclusion}
+
+Answer:
+
+
