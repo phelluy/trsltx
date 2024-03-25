@@ -434,4 +434,21 @@ r#"root   ::= [A-Z][a-z]*"#;
         // let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
     }
+
+
+    #[test]
+    fn test_translate_with_grammar() {
+        // prompt in the file "test/trs_sample_gram.txt"
+        let prompt = std::fs::read_to_string("test/trs_sample_gram.txt").expect("cannot read prompt");
+        // grammar in "src/sample.ebnf"
+        let grammar = std::fs::read_to_string("src/sample.ebnf").expect("cannot read grammar");
+        let str=complete_with_ts(&prompt, Some(grammar));
+        // print str in the terminal with true newlines
+        println!("-------------------------------------------");
+        let parts = str.split("\\n");
+        for part in parts {
+            println!("{}", part);
+        }   
+    
+    }
 }
