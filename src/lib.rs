@@ -336,7 +336,7 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
             })
         }
     };
-    println!("Req= {:?}", req);
+    //println!("Req= {:?}", req);
 
     let client = reqwest::blocking::Client::new();
     let res = client
@@ -350,7 +350,7 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
 
     let answer: String = match res {
         Ok(resp) => {
-            println!("{:?}", resp);
+            //println!("{:?}", resp);
             let text = resp["text"].as_str().expect("Failed to get text");
             //println!("{:?}", text);
             text.to_string()
