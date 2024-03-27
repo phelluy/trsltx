@@ -1,0 +1,1790 @@
+%% LyX 1.1 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[a4paper,english]{amsart}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\usepackage{ae}
+\usepackage{graphics}
+\usepackage{subfigure}
+\usepackage{hyperref}
+
+\makeatletter
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% LyX specific LaTeX commands.
+\providecommand{\LyX}{L\kern-.1667em\lower.25em\hbox{Y}\kern-.125emX\@}
+%% Special footnote code from the package 'stblftnt.sty'
+%% Author: Robin Fairbairns -- Last revised Dec 13 1996
+\let\SF@@footnote\footnote
+\def\footnote{\ifx\protect\@typeset@protect
+    \expandafter\SF@@footnote
+  \else
+    \expandafter\SF@gobble@opt
+  \fi
+}
+\expandafter\def\csname SF@gobble@opt \endcsname{\@ifnextchar[%]
+  \SF@gobble@twobracket
+  \@gobble
+}
+\edef\SF@gobble@opt{\noexpand\protect
+  \expandafter\noexpand\csname SF@gobble@opt \endcsname}
+\def\SF@gobble@twobracket[#1]#2{}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% Textclass specific LaTeX commands.
+ \theoremstyle{plain}
+ \newtheorem{thm}{Theorem}[section]
+ \numberwithin{equation}{section} %% Comment out for sequentially-numbered
+ \numberwithin{figure}{section} %% Comment out for sequentially-numbered
+ \theoremstyle{remark}
+ \newtheorem{rem}[thm]{Remark}
+ \newcommand{\lyxaddress}[1]{
+   \par {\raggedright #1
+   \vspace{1.4em}
+   \noindent\par}
+ }
+
+\makeatother
+\begin{document}
+
+\title{Practical computation of axisymmetrical multifluid flows}
+
+
+\author{Thomas BARBERON, Philippe HELLUY, Sandra ROUY}
+
+
+\lyxaddress{ISITV, Laboratoire ANAM/MNC, BP56, 83162 La Valette
+CEDEX. France. \texttt{helluy@univ-tln.fr}}
+
+
+\thanks{This work has been supported by a joint research grant DCN/ING Toulon
+\& Région PACA.}
+%trsltx-split
+\begin{abstract}
+We adapt the Saurel-Abgrall front capturing finite volumes method
+for an industrial simulation of compressible multifluid flows. We
+then apply the method to the case of air-water flow in the cooling
+chamber of an axisymmetrical gas generator. We describe
+successively how to deal with exact and global Riemann solvers,
+pressure oscillations, unstructured meshes, axisymmetry, boundary
+conditions and overly restrictive CFL conditions. The resulting
+algorithm is efficient and robust.
+\end{abstract}
+
+\keywords{compressible multifluid, front capturing,
+nonconservative scheme, axisymmetry.}
+%trsltx-split
+\maketitle \date \tableofcontents
+
+\section{Introduction}
+
+This work is devoted to the application of recent finite volumes
+schemes, and particularly the one proposed by Saurel and Abgrall
+in \cite{saurel99}, to the simulation of an axisymmetrical
+multiphase flow in a complex geometry. Because of the complexity
+of the application, we have to specify or adapt the original
+Saurel-Abgrall idea to: \nolinebreak global Riemann solver,
+unstructured
+meshes, axisymmetry, boundary conditions, multi time steps... \\
+%trsltx-split
+We base our simulation on an effective mathematical model for
+compressible multifluid flows and especially air-water flows. For
+our application, the pressure law for the air is a classical
+perfect gas law. Because we have in mind flows with high and low
+pressures, we have also to take into account the compressibility
+effects in water. In such applications, it is classical to observe
+\textsl{cavitation} zones in the liquid phase. Cavitation is a
+phenomenon that appears in a region of the flow where the pressure
+drops below the saturation pressure of water. In a first and very
+short stage, the liquid stays in a metastable state. It can also
+happen in this stage that the pressure becomes negative (it is
+then called a tension). In a second stage, a phase transition
+(vaporization) occurs. Thus the original two-phase flow, made of
+air and water, becomes a three-phase flow made of air, liquid and
+vapor. We restrict ourself to the two-phase case, where the phase
+transition has not started (or is not taken into account...).
+Then, as for the air, a pressure law which expresses the pressure
+of the water as a function of density and internal energy has to
+be supplied. We use a very simple generalization of the perfect
+gas law, the stiffened gas equation of state (see
+(\ref{presslaw})), which allows
+negative values for the pressure. \\
+%trsltx-split
+Compressible single fluids have been extensively studied and the
+main difficulty here is the representation of the interface
+between the fluids. There are two main approaches for treating
+interfaces:
+\begin{itemize}
+  \item One can favor the Lagrangian interpretation of the fluid
+  equations. The interface then receives a particular treatment in
+  the numerical method. This approach leads to the family of
+  the \textsl{front-tracking methods}. We will not
+  consider this kind of solution here.
+  \item If the Eulerian point of view is preferred, the resulting
+  scheme belongs to the family of the \textsl{front-capturing
+  methods}. No special treatment is applied to the numerical cells that are
+  crossed by the interface. We prefer the front-capturing methods
+  because they are more general and easier to implement than the
+  front-tracking methods.
+\end{itemize}
+A now classical and simple approach, proposed for example in
+\cite{osher92}, \cite{karni96}, is to locate the interface by
+means of the level-set of a function which is convected with the
+flow. In this approach only an advection equation has to be added
+to the classical compressible Euler model. One switches from one
+law (perfect gas) to the other (stiffened gas) according to the
+value of the level-set function. Because the stiffened gas law is
+a generalization of the perfect gas law, the level-set model is
+also equivalent, in our case, to a model where the two
+coefficients of the stiffened gas law are convected with the flow.
+The interface is then located by the discontinuities of the
+pressure law coefficients. Our model is finally made up of the
+Euler system (conservation of mass, momentum and energy, equations
+(\ref{euler})), two additional transport equations (equations
+(\ref{convcoef})) and the stiffened gas law (equation
+(\ref{presslaw})).
+%trsltx-split
+This multifluid model presents a supplementary
+transport equation when compared to the level-set
+model but it is generally easier to discretize. \\
+
+Despite its simplicity and its mathematical perfection, this model
+leads to numerous numerical difficulties as shown in many works
+among which we can cite \cite{abgrall88}, \cite{karni94},
+\cite{karni96}, \cite{saurel99}, \cite{karni01}, \cite{fedkiw99},
+\cite{rouy00}... These difficulties have to be overcome before
+envisaging practical applications. Of greatest concern are the
+spurious pressure oscillations that appear near the material
+interface when the model is approximated by any conservative
+finite volumes scheme. The same kind of oscillations occurs in the
+simulation of mixtures of perfect gases \cite{abgrall88} or across
+numerically diffused shear interfaces \cite{nkonga02}. Actually,
+it appears that classical conservative schemes (such as Godunov's,
+Roe's, HLL, Rusanov's, etc.) suffer from a very slow convergence
+and a very bad precision on standard meshes when applied to the
+previous multifluid model. Mulder, Osher and Sethian did not
+mention this fact in \cite{osher92} although they use in their
+work a classical conservative Roe scheme. Their trick to obtain
+acceptable numerical results is not detailed.
+%trsltx-split
+Karni, in
+\cite{karni94}, points out this difficulty and proposes a simple
+hybrid scheme to remove the pressure oscillations. The idea is to
+solve the classical conservative equations far from the interface
+between the two fluids and a nonconservative pressure equation
+near the interface. The resulting nonconservative scheme, which is
+built in order to preserve constant pressure and velocity states,
+gives good results. But it is not clear, in the paper of Karni,
+whether the conservation error tends to zero with the step of the
+mesh. Indeed, as it is proved in the work of Hou and LeFloch
+\cite{hou94}, nonconservative schemes generally converge to wrong
+solutions. Then Abgrall in \cite{abgrall96}, Saurel and Abgrall in
+\cite{saurel99} propose a simpler approach based on the
+nonconservative convection of well chosen pressure law parameters.
+As in the work of Karni, the main idea in order to choose the good
+transported quantities, is to construct a scheme which preserves
+the moving contact discontinuities. In a one dimensional framework
+this is expressed by the fact that the pressure and the velocity
+should not change if they are constant at the first time step, but
+a numerical diffusion of the density is possible. The resulting
+scheme is quasi-conservative. More precisely, the numerical fluxes
+for mass, momentum and energy are conservative whereas the
+numerical fluxes for the gas law coefficients are not
+conservative.
+%trsltx-split
+Hence, the resulting scheme allows slight mass
+transfers between the gas and the liquid. According to numerical
+experiments, this scheme seems to be converging. This is not in
+contradiction with the previously cited result of Hou and LeFloch.
+Indeed, according to the Rankine-Hugoniot jump relations, the
+velocity of the flow and the gas law parameters cannot present a
+simultaneous jump. Thus the nonconservative products in the
+nonconservative transport equations are perfectly defined. Another
+interesting fix to the spurious oscillations is proposed by
+Fedkiw, Aslam, Merriman and Osher in \cite{fedkiw99}, under the
+name of the Ghost Fluid Method. With the aid of a ghost fluid,
+these authors propose a nonconservative Godunov scheme where only
+one-fluid Riemann problems have to be solved. This method has been
+simplified by Abgrall and Karni in \cite{karni01}, under the name
+of the "Two-Flux Method". The Ghost Fluid and the Two-Flux methods
+are completely nonconservative at the interface. Numerical
+experiments (see \cite{barberon02}) seem to indicate that they
+converge, but there is still no complete theoretical justification
+of this
+"miracle".\\
+%trsltx-split
+
+
+Once the pressure oscillations have been corrected by an adequate
+scheme, still other difficulties remain. The remedies have more to
+do with numerical engineering than with mathematics but must be
+carefully assembled. In this way, we have to deal with
+axisymmetry, unstructured meshes, implementation of
+the Riemann solver, CFL condition... \\
+
+This paper is thus organized as follows. \\
+
+
+Following this Introduction,  the second part is devoted to a
+presentation of the mathematical model. We describe its
+mathematical properties. The main feature is that the Riemann
+problem is globally well posed. This fact is important for the
+numerical simulation when a Godunov scheme is used. On the other
+hand the model allows negative values for the pressure. As we have
+already said, this can be justified
+in some physical configurations.\\
+%trsltx-split
+The third part begins with an exposition of the pressure
+oscillations that appear at the material interface in two-fluid
+simulations. We illustrate the pressure oscillations thanks to a
+simple test case. We recall the bases of the construction of the
+Saurel-Abgrall scheme. In the original Saurel and Abgrall paper
+\cite{saurel99}, the construction is achieved with the help of the
+approximate Riemann solver of Rusanov. As detailed in
+\cite{rouy00}, we use here instead an exact Riemann solver. In
+order to solve the convection of the pressure law coefficients, we
+use a nonconservative numerical flux based on the velocity of the
+contact in the Riemann solution between two cells.
+%trsltx-split
+The Abgrall-Saurel reasoning is only valid for a multifluid flow where
+each fluid satisfies the stiffened gas law. For the sake of
+completeness, we also present another finite volumes scheme which
+preserves constant pressure-velocity states, and this for any gas
+law. This scheme is a Lagrange plus projection scheme. In the
+Lagrangian step, the contacts are perfectly resolved. The
+projection step is thus constructed in order to preserve this
+property. We propose to project the pressure back on the Eulerian
+grid instead of other conservative variables. The resulting scheme
+is valid for any pressure law and can be generalized to higher
+dimensions. This scheme is not conservative for the mass fraction
+it is thus precise only for moderate shocks. It is generally not
+convergent. For strong shocks a hybrid scheme should be used as in
+the papers of Karni \cite{karni94}, \cite{karni96}: the idea would
+be to project the conservative variables near the shocks and the
+pressure near the contacts. Thus the Lagrange-projection scheme is
+not used in the sequel of the paper. It is slightly more diffusive
+and complex in its hybrid version than the Saurel-Abgrall scheme.
+Furthermore in our application,
+ the validity of the stiffened gas law is sufficient. The
+ Lagrange-projection approach would be necessary to take into account the
+ vaporization of the liquid in cavitation zones (see
+ \cite{barberon02}).
+ \\
+ %trsltx-begin-ignore
+
+The fourth part is devoted to an exposition of several practical
+difficulties that have to be solved before the application of the
+previous theory to an industrial problem:
+\begin{itemize}
+  \item The first adaptation concerns the construction of a 2D
+  axisymmetrical scheme based on the 1D scheme of Saurel and
+  Abgrall that preserves moving contacts. It is not trivial to
+  extend the idea of Saurel and Abgrall
+  to higher dimensions. This is due to the fact that in higher
+  dimensions the velocity is generally not continuous through a
+  contact discontinuity - only the normal component is. Nkonga
+  recently proposed a 2D scheme for resolving shear interfaces
+  in \cite{nkonga02}. His scheme perfectly resolves contact
+  discontinuities aligned with the mesh, but because it is
+  not conservative for the momentum, it is probably not convergent.
+  In this paper we restrict ourselves to a scheme that preserves
+  constant pressure-velocity states.
+  First, we write a 3D Godunov scheme
+  using the rotationnal invariance of the Euler equations, as
+  usual. Some pressure law coefficients are convected in a nonconservative
+  way, as in the Saurel-Abgrall scheme. Then we restrict this scheme to an axisymmetrical mesh.
+  This leads to a 2D axisymmetrical scheme. The interest of this
+  approach is to avoid complicated source terms that arise from
+  the axisymmetrical Euler equations. It must be pointed out that
+  in the literature many authors (as \cite{butler99}, \cite{kuszla98}, etc.) do
+  not follow this (in our sense) correct approach and have to deal
+  with singular source terms on the axis of rotation.
+  \item The second necessary adaptation deals with the boundary
+  conditions. We shall use in the application a classical
+  treatment of the boundary conditions by defining artificial
+  cells on the boundary. In order to define the physical values of
+  the artificial cells, we follow the approach of partial Riemann
+  problems as in the works of Dubois and LeFloch \cite{dubois88}, \cite{dubois01}.
+  \item In our application, the geometry of the mesh is quite
+  complex. This imposes the use of unstructured meshes.
+  We thus have to develop a special technique of multiple time
+  steps because the CFL condition given by the small cells is too
+  restrictive. On each edge we define a local time step which is a
+  power of two times the minimal time step. This local time step
+  satisfies the CFL condition of the two neighboring cells. Then
+  more time steps are performed on the small cells than on the big
+  cells, with possible "rendez-vous" because the ratio of two different
+  time steps is a power of two. The resulting
+  scheme is stable, and the computation time is reduced by a significant factor.
+\end{itemize}
+
+
+In the fifth part we present numerical results obtained in the
+case of an axisymmetrical gas generator. As we have said before,
+the gas generator geometry is quite complex. Several kinds of
+boundary conditions have to be considered. Because of the presence
+of very small holes, the ratio between the biggest cell and the
+smallest cell in the mesh is of the order of 10. All these facts
+justify our previous approach. We are then able to present a
+complete simulation of this industrial system. According to
+preliminary measurements, our simulation gives, at least
+qualitatively, good results. More details are given in \cite{rouy00}.\\
+
+The sixth part is the conclusion of the paper.\\
+
+We then end the paper with an appendix (seventh part) where some
+computations are detailed:
+\begin{itemize}
+  \item First we perform classical computations concerning
+  hyperbolicity and entropy. We also recall the mathematical
+  equivalence of the conservative equations with the nonconservative
+   form of Saurel-Abgrall. This fact would permit to
+prove a Lax-Wendroff convergence result for the Saurel-Abgrall
+  scheme and thus presents some interest.
+  \item Second, we prove that the Riemann problem for a two-fluid
+  flow governed by a stiffened gas law is globally well posed. In
+  the case of strong rarefaction waves, it is necessary to
+  introduce negative pressures and/or vacuum regions.
+  The proof uses standard arguments
+  but we have not found it in the literature. The notations that we
+  have to set are also useful for a rigorous definition of the
+  boundary conditions that are described in part 4.
+\end{itemize}
+
+
+
+\section{A two-fluids model for air-water flows}
+
+
+\subsection{Basic equations}
+
+We are interested in the flow of a compressible continuous medium
+characterized by its density \( \rho (t,x) \), its velocity \(
+u(t,x) \), and its internal massic energy \( \varepsilon (t,x) \).
+The time variable is denoted by \( t \), the space variable is \(
+x \), and for simplicity we present the model in one space
+dimension. The pressure $p(t,x)$ of the medium is expressed by a
+stiffened gas Equation Of State (EOS)
+\begin{equation} \label{presslaw}
+p = (\gamma  - 1)\rho \varepsilon  - \gamma \pi .
+\end{equation}
+Because we are studying a flow of several fluids, the two
+parameters $\gamma$ and $\pi$ of the pressure law also depend on
+time and space
+\begin{equation}
+  \gamma=\gamma(t,x) \quad \text{and} \quad \pi=\pi(t,x).
+\end{equation}
+Conservation of mass, momentum and energy lead to the three Euler
+equations\begin{eqnarray}
+\rho _{t}+(\rho u)_{x} & = & 0,\nonumber \\
+(\rho u)_{t}+(\rho u^{2}+p)_{x} & = & 0,\label{euler} \\
+(\rho E)_{t}+((\rho E+p)u)_{x} & = & 0,\nonumber
+\end{eqnarray}
+where \( E \), the total massic energy, is defined by
+\begin{equation}
+E=\varepsilon +\frac{u^{2}}{2}.
+\end{equation}
+
+On the other hand, the pressure law parameters are convected with
+the flow
+\begin{equation}\label{convcoef}
+\begin{gathered}
+  \gamma _t  + u\gamma _x  = 0, \hfill \\
+  \pi _t  + u\pi _x  = 0. \hfill \\
+\end{gathered}
+\end{equation}
+If the gas is supposed to be perfect and polytropic (this will
+always be the case in the sequel), we set
+$\gamma=\gamma_{\text{gas}}$ and $\pi=0$. For the liquid, the
+stiffened gas EOS is still valid. It reads \[ p=(\gamma
+_{\,\text{liq}}-1)\rho \varepsilon -\gamma
+_{\,\text{liq}}\pi_{\text{liq}} .\] The constants \( \gamma
+_{\,\text{liq}} \) and \( \pi_{\text{liq}}  \) are chosen in order
+to match physical measurements. Cocchi and Saurel in
+\cite{saurel97} have proposed the following values for $\gamma
+_{\,\text{liq}}$ and $\pi_{\text{liq}}$
+\begin{equation}\label{valphi}
+\begin{gathered}
+  \gamma_{\,\text{liq}} = 5.5, \hfill \\
+  \pi_{\text{liq}}  = 4900\text{ bar}\text{.} \hfill \\
+\end{gathered}
+\end{equation}
+These values are based on sound speed and shock speed
+measurements.
+
+In this model, the interface between air and water can be located
+by the discontinuity of $\gamma(t,x)$ or $\pi(t,x)$. It must be
+pointed out that mathematically, the model is perfectly equivalent
+to a level-set model (as the one of \cite{osher92}). In the
+level-set model, equations (\ref{convcoef}) are replaced by the
+convection of a level-set function
+\begin{equation} \label{convlevset}
+  \varphi_t+u\varphi_x=0,
+\end{equation}
+and the pressure law (\ref{presslaw}) by
+\begin{equation} \label{preslevset}
+  p=(\gamma(\varphi)-1)\rho\varepsilon -\gamma(\varphi) \pi(\varphi).
+\end{equation}
+But it appears that numerically, it is not equivalent to
+discretize (\ref{euler}), (\ref{presslaw}), (\ref{convcoef}) or
+(\ref{euler}), (\ref{preslevset}), (\ref{convlevset}).
+
+\subsection{Properties of the model}
+
+Our system (\ref{euler}), (\ref{presslaw}), (\ref{convcoef}) can
+be expressed in the classical form of a system of conservation
+laws (the equivalence between the non-conservative form and the
+conservative form is rigorously proved in section \ref{appendix}:
+see remark \ref{noncons2})
+\begin{equation} \label{slc} W_t+F(W)_x=0,
+\end{equation}
+with\[ W=\left( \begin{array}{c}
+\rho \\
+\rho u\\
+\rho E\\
+\rho \gamma \\
+\rho \pi
+\end{array}\right) ,\quad F(W)=\left( \begin{array}{c}
+\rho u\\
+\rho u^{2}+p\\
+(\rho E+p)u\\
+\rho \gamma u \\
+\rho \pi u
+\end{array}\right) ,\]
+and the pressure law (\ref{presslaw}).
+
+If $c$ is the sound speed associated with the pressure law
+(\ref{presslaw}), it verifies
+\begin{equation}\label{soundspeed}
+  c^2=\gamma \frac{p+\pi}{\rho}.
+\end{equation}
+The hyperbolicity of the system (\ref{slc}) then implies that
+\begin{equation}\label{condhyp}
+  p+\pi \geq 0.
+\end{equation}
+Thus, the model admits negative pressure in the water. Is this
+physically correct? Indeed, negative pressures can locally and
+briefly appear in a liquid, they should then be called
+\textsl{tensions}. But in the zone of negative pressures the
+liquid is in a metastable state and is subject to vaporization.
+This phenomenon is called \textsl{cavitation}. For a physical
+description of the cavitation, we refer to the book of Franc $\&$
+\textit{al} \cite{franc95}. We have proposed recently a simple
+adaptation of the stiffened gas model to take into account
+cavitation (see \cite{helluy02}) but before the phase transition,
+or if the appearance of the tensions is very short, the stiffened
+gas law is still a good physical model. It must be pointed out
+that in our numerical simulations we will not use any special
+treatment when negative pressures occur. Some authors (as
+\cite{fedkiw99}) have proposed to correct the pressure by limiting
+it to zero when it is negative. This amounts to forgoing energy
+conservation and we think that it is worse from a physical point
+of view than negative pressures. It also causes additional
+numerical complications due to the kink in the limited gas law.
+For example, it is necessary to envisage
+a centered scheme on the cells where the pressure is limited.\\
+
+There is another (mathematical) reason to keep this model. If one
+considers the Riemann problem associated to the system (\ref{slc})
+and (\ref{presslaw})
+\begin{eqnarray}
+W_t+F(W)_x=0,\\
+W(0,x)=\left\{ \begin{array}{c}
+W_{l}\textrm{ if }x<0,\\
+W_{r}\textrm{ if }x>0.
+\end{array} \right .
+\end{eqnarray}
+The self-similar solution is noted
+\[ W(t,x)=R\left(\frac{x}{t},W_{l},W_{r}\right).\]
+Then it can be shown that the solution is unique for any left and
+right states $W_l$ and $W_r$ satisfying the positivity of density
+and the hyperbolicity condition (\ref{condhyp}). The fact that the
+global Riemann problem can be uniquely solved is well known in the
+case of a monofluid flow. For example, it is solved in the book of
+Godunov \cite{godunov79} for the case of a one-fluid flow
+satisfying the stiffened gas law. In the case of strong
+rarefaction waves, the solution can present a region of vacuum in
+which
+\begin{equation}\label{vacuum}
+\begin{gathered}
+  p =  - \pi_{\text{liq}} , \hfill \\
+  \rho  = 0. \hfill \\
+\end{gathered}
+\end{equation}
+The solvability result can be extended to our model. For the sake
+of completeness, we prove it in the section \ref{appendix}. The
+global solvability of the Riemann problem is fundamental when one
+intends to use a Godunov type scheme, because it ensures the
+robustness of the resulting scheme. Another important property of
+the model is that it permits many equivalent formulations. Indeed,
+any function $f(\gamma,\pi)$ of $\gamma$ and $\pi$ is also
+convected with the flow. For example, the system (\ref{slc}),
+(\ref{presslaw}) is equivalent to
+\begin{equation} \label{abgralcons}
+\begin{gathered}
+ \rho _t  + (\rho u)_x  = 0, \hfill \\
+ (\rho u)_t  + (\rho u^2  + p)_x  = 0, \hfill \\
+ (\rho E)_t  + ((\rho E + p)u)_x  = 0, \hfill \\
+ (\rho /(\gamma-1))_t  + (\rho u /(\gamma-1) )_x  = 0,\hfill \\
+ (\rho \gamma \pi /(\gamma-1))_t  + (\rho u \gamma \pi /(\gamma-1) )_x  = 0,\hfill
+\end{gathered}
+\end{equation}
+with the stiffened gas law (\ref{presslaw}).
+
+It is also equivalent to the following nonconservative form
+\begin{equation} \label{abgralnoncons}
+\begin{gathered}
+ \rho _t  + (\rho u)_x  = 0, \hfill \\
+ (\rho u)_t  + (\rho u^2  + p)_x  = 0, \hfill \\
+ (\rho E)_t  + ((\rho E + p)u)_x  = 0, \hfill \\
+ ( 1/(\gamma-1))_t  + u (1/(\gamma-1) )_x  = 0,\hfill \\
+ (\gamma \pi /(\gamma-1))_t  + u (\gamma \pi /(\gamma-1) )_x  = 0,\hfill
+\end{gathered}
+\end{equation}
+with the stiffened gas law (\ref{presslaw}).
+
+The nonconservative form (\ref{abgralnoncons}) plays a particular
+role among the other forms on the numerical point of view as we
+will see in the next section.
+
+
+\section{Nonconservative finite volumes approximation}
+
+This section is devoted to a short and simple presentation of the
+pressure oscillations phenomenon in the conservative Godunov
+schemes. It appears that for very simple one-dimensional test
+cases, the classical first order conservative Godunov scheme gives
+very bad results on every conservative form of the equations as
+(\ref{slc}) or (\ref{abgralcons}). We first exhibit one of these
+test
+cases which is a simple Riemann problem.\\
+Then, we present two fixes which permit to avoid the pressure
+oscillations at the interface:
+\begin{itemize}
+  \item The first scheme is the Saurel-Abgrall scheme. The
+  construction principle of this scheme is to require that it
+  preserves the moving contact discontinuities. This
+  condition leads to a nonconservative discretization of the
+  transport of some pressure law coefficients.   Let us recall that
+   the conservative 1D Godunov scheme also preserves moving contact discontinuities in the case
+of a one-fluid flow. The nonconservative correction is only useful
+for multifluid flows. The Saurel-Abgrall correction cannot
+  be applied to other pressure laws than the stiffened gas law.
+  \item The second scheme is a Lagrange plus remap scheme. This
+  scheme works for any pressure laws but only for moderate shocks because it is not conservative
+  for the mass fraction.
+  It is based on the simple remark that during the Lagrangian step,
+  the contact discontinuities are perfectly solved. In the remap
+  step we thus project mass, momentum and energy as usual. We forget the mass
+  fraction conservation and instead project the pressure. In this
+  way, the pressure equilibrium of the two components is
+  recovered.
+\end{itemize}
+These two schemes remove the pressure oscillation phenomenon and
+can be extended without difficulty to higher dimensions. The
+Saurel-Abgrall scheme is less diffusive than the
+Lagrange-plus-remap scheme. The Lagrange-plus-remap scheme is not
+convergent in its present form. It is possible to improve its
+precision for strong shocks by employing a hybrid version of the
+scheme: with the help of a level-set function, a conservative
+scheme is used far from the interface and the Lagrange-plus-remap
+approach near the contact. Hybrid schemes are described for
+example in \cite{karni96} and \cite{seguin03}. Because we
+concentrate on the stiffened gas law, only the Saurel-Abgrall
+scheme is used in the sequel of the paper for
+the numerical experiments in two dimensions. \\
+In this section, we restrict ourself to a Riemann problem initial
+condition. For the numerical experiments, we choose the following
+values
+\begin{equation}
+\label{a1condini}\begin{array}{l}
+ \rho _l  = 10\text{ kg/m}^3 \quad u_l  = 50\text{ m/s} \quad p_l  = 1.1\times10^5\text{ Pa}
+ \quad \gamma _l  = 1.4 \quad \pi_l=0,\\
+ \rho _r  = 1\text{ kg/m}^3\quad u_r  = 50\text{ m/s}\quad p_r  = 1\times10^5\text{ Pa}
+ \quad \gamma _r  = 1.1 \quad \pi_r=0.\\
+ \end{array}
+% MathType!End!2!1!
+\end{equation}
+\subsection{Failure of the Godunov scheme} In this section, we
+present numerical results obtained by a classical Godunov scheme.
+The approximated system is (\ref{abgralcons}), but we would obtain
+very similar results for any other conservative formulation.
+
+Consider a space step \( h \) and a time step \( \tau \). The
+discretization points are \( x_{i}=ih,\quad i\in Z \). The cells
+\( C_{i} \) are centered on \( x_{i} \), \(
+C_{i}=]x_{i-1/2},x_{i+1/2}[ \). We look for an approximation of \(
+W \) in the cell \( C_{i} \) at time \( t_{n}=n\tau  \)\[
+W_{i}^{n}\simeq W(t_{n},x),\quad x\in C_{i}.\] A general
+conservative finite volumes scheme reads\[
+W^{n+1}_{i}=W^{n}_{i}-\frac{\tau
+}{h}(F^{n}_{i+1/2}-F^{n}_{i-1/2}).\] In the case of the Godunov
+scheme, the numerical flux is given by the resolution of a Riemann
+problem at each cell interface \( x_{i+1/2} \) and takes the
+form\[ F^{n}_{i+1/2}=F(R(0^{+\textrm{ or
+}-},W^{n}_{i},W^{n}_{i+1})).\]
+
+The initial conditions are (\ref{a1condini}). We plot only the
+pressure at time $t=1$ ms. The study interval is $]0,L[$ with
+$L=1$ m. The number of cells is fixed at $N=400$ and the CFL
+number is $0.7$. We observe pressure oscillations at the contact
+discontinuity (which is also the material interface between the
+two fluids). The results are in Figure \ref{a1godu_sys1}.
+\begin{figure}[h]\label{a1godu_sys1}
+\centering
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_rho.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_vit.eps}}
+\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_pres.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_gam.eps}}
+\caption{\textit{Godunov scheme, pressure (line: exact; dots:
+numeric) }}
+\end{figure}
+
+\subsection{Nonconservative transport of the pressure law
+coefficients} The conservative scheme gives very bad results and
+cannot be used for higher dimensional simulations. On the other
+hand, numerical experiments indicate that the situation is not
+better with another (approximate) Riemann solver.  A second order
+MUSCL extension would slightly improve the results but it is not
+sufficient.
+
+In order to improve the precision of the Godunov scheme, it is
+possible as proposed by Saurel and Abgrall in \cite{saurel99} to
+give up the last two conservation laws of the system
+(\ref{abgralcons}) and replace them by a nonconservative transport
+equation to obtain (\ref{abgralnoncons}). We show now why the
+special nonconservative form (\ref{abgralnoncons}) plays a
+particular role for a finite volumes approximation. For this, let
+us consider a general conservative (for the mass, momentum and
+energy) upwind scheme. Suppose that we want to approximate a
+general moving contact discontinuity of constant velocity $v$ and
+pressure $p$. We suppose that $v\gg 1$ and that the constant flow
+is supersonic. Then, because the speed $v>0$, the upwind scheme
+reads
+% MathType!Translator!2!1!LaTeX.tdl!TeX -- LaTeX 2.09 and later!
+% MathType!MTEF!2!1!+-
+% feaaeaart1ev0aaatCvAUfeBSjuyZL2yd9gzLbvyNv2CaerbuLwBLn
+% hiov2DGi1BTfMBaeXatLxBI9gBaerbd9wDYLwzYbItLDharqqtubsr
+% 4rNCHbGeaGqiVu0Je9sqqrpepC0xbbL8F4rqqrFfpeea0xe9Lq-Jc9
+% vqaqpepm0xbba9pwe9Q8fs0-yqaqpepae9pg0FirpepeKkFr0xfr-x
+% fr-xb9adbaqaaeGaciGaaiaabeqaamaabaabaaGceaqabeaacqaHbp
+% GCdaqhaaWcbaGaamyAaaqaaiaad6gacqGHRaWkcaaIXaaaaOGaeyyp
+% a0JaeqyWdi3aa0baaSqaaiaadMgaaeaacaWGUbaaaOGaeyOeI0YaaS
+% aaaeaacqaHepaDaeaacaWGObaaamaabmaabaGaaiikaiabeg8aYjaa
+% dwhacaGGPaWaa0baaSqaaiaadMgaaeaacaWGUbaaaOGaeyOeI0Iaai
+% ikaiabeg8aYjaadwhacaGGPaWaa0baaSqaaiaadMgacqGHsislcaaI
+% XaaabaGaamOBaaaaaOGaayjkaiaawMcaaiaacYcaaeaacaGGOaGaeq
+% yWdiNaamyDaiaacMcadaqhaaWcbaGaamyAaaqaaiaad6gacqGHRaWk
+% caaIXaaaaOGaeyypa0Jaaiikaiabeg8aYjaadwhacaGGPaWaa0baaS
+% qaaiaadMgaaeaacaWGUbaaaOGaeyOeI0YaaSaaaeaacqaHepaDaeaa
+% caWGObaaamaabmaabaGaaiikaiabeg8aYjaadwhadaahaaWcbeqaai
+% aaikdaaaGccqGHRaWkcaWGWbGaaiykamaaDaaaleaacaWGPbaabaGa
+% amOBaaaakiabgkHiTiaacIcacqaHbpGCcaWG1bWaaWbaaSqabeaaca
+% aIYaaaaOGaey4kaSIaamiCaiaacMcadaqhaaWcbaGaamyAaiabgkHi
+% TiaaigdaaeaacaWGUbaaaaGccaGLOaGaayzkaaGaaiilaaqaaiaacI
+% cacqaHbpGCcqaH1oqzcqGHRaWkcqaHbpGCdaWcaaqaaiaadwhadaah
+% aaWcbeqaaiaaikdaaaaakeaacaaIYaaaaiaacMcadaqhaaWcbaGaam
+% yAaaqaaiaad6gacqGHRaWkcaaIXaaaaOGaeyypa0Jaaiikaiabeg8a
+% Yjabew7aLjabgUcaRiabeg8aYnaalaaabaGaamyDamaaCaaaleqaba
+% GaaGOmaaaaaOqaaiaaikdaaaGaaiykamaaDaaaleaacaWGPbaabaGa
+% amOBaaaakiabgkHiTmaalaaabaGaeqiXdqhabaGaamiAaaaadaqada
+% qaaiaacIcacqaHbpGCcqaH1oqzcaWG1bGaey4kaSIaeqyWdiNaamyD
+% amaalaaabaGaamyDamaaCaaaleqabaGaaGOmaaaaaOqaaiaaikdaaa
+% Gaey4kaSIaamiCaiaadwhacaGGPaWaa0baaSqaaiaadMgaaeaacaWG
+% UbaaaOGaeyOeI0Iaaiikaiabeg8aYjabew7aLjaadwhacqGHRaWkcq
+% aHbpGCcaWG1bWaaSaaaeaacaWG1bWaaWbaaSqabeaacaaIYaaaaaGc
+% baGaaGOmaaaacqGHRaWkcaWGWbGaamyDaiaacMcadaqhaaWcbaGaam
+% yAaiabgkHiTiaaigdaaeaacaWGUbaaaaGccaGLOaGaayzkaaGaaiOl
+% aaaaaa!C3EF!
+\begin{eqnarray}
+ \rho _i^{n + 1}  &=& \rho _i^n  - \frac{\tau }{h}\left( {(\rho u)_i^n  - (\rho u)_{i - 1}^n } \right), \\
+ (\rho u)_i^{n + 1}  &=& (\rho u)_i^n  - \frac{\tau }{h}\left( {(\rho u^2  + p)_i^n  - (\rho u^2  + p)_{i - 1}^n } \right), \\
+ (\rho \varepsilon  &+& \rho \frac{{u^2 }}{2})_i^{n + 1}  = (\rho \varepsilon  + \rho \frac{{u^2 }}{2})_i^n  - \\
+ & & \frac{\tau }{h}\left( {(\rho \varepsilon u + \rho u\frac{{u^2 }}{2} + pu)_i^n
+  - (\rho \varepsilon u + \rho u\frac{{u^2 }}{2} + pu)_{i - 1}^n } \right). \nonumber
+ \end{eqnarray}
+% MathType!End!2!1!
+We now impose that the scheme preserves the moving contact
+discontinuities, i.e. that $u_i^{n+1}=u_i^{n}=v$ and
+$p_i^{n+1}=p_i^{n}=p$. We obtain
+\begin{eqnarray}
+ \rho _i^{n + 1}  &=& \rho _i^n  -
+  \frac{\tau }{h}\left( {(\rho v)_i^n  - (\rho v)_{i - 1}^n } \right), \\
+ (\rho v)_i^{n + 1}  &=& (\rho v)_i^n  -
+ \frac{\tau }{h}\left( {(\rho v^2  + p)_i^n  - (\rho v^2  + p)_{i - 1}^n } \right), \\
+ (\rho \varepsilon  &+& \rho \frac{{v^2 }}{2})_i^{n + 1}  = (\rho \varepsilon  + \rho \frac{{v^2
+ }}{2})_i^n\\
+ & & -\frac{\tau }{h}\left( {(\rho \varepsilon v + \rho v\frac{{v^2 }}{2} + p v)_i^n
+ - (\rho \varepsilon v + \rho v\frac{{v^2 }}{2} + p v)_{i - 1}^n }
+ \right). \nonumber
+ \end{eqnarray}
+ The two first equations reduce then to
+\begin{equation}
+  \rho _i^{n + 1}  = \rho _i^n  - \frac{\tau }{h}v\left( {\rho_i^n  - \rho_{i - 1}^n }
+  \right),
+\end{equation}
+while the last equation becomes
+% MathType!Translator!2!1!LaTeX.tdl!TeX -- LaTeX 2.09 and later!
+% MathType!MTEF!2!1!+-
+% feaaeaart1ev0aaatCvAUfeBSjuyZL2yd9gzLbvyNv2CaerbuLwBLn
+% hiov2DGi1BTfMBaeXatLxBI9gBaerbd9wDYLwzYbItLDharqqtubsr
+% 4rNCHbGeaGqiVu0Je9sqqrpepC0xbbL8F4rqqrFfpeea0xe9Lq-Jc9
+% vqaqpepm0xbba9pwe9Q8fs0-yqaqpepae9pg0FirpepeKkFr0xfr-x
+% fr-xb9adbaqaaeGaciGaaiaabeqaamaabaabaaGcbaGaaiikaiabeg
+% 8aYjabew7aLjaacMcadaqhaaWcbaGaamyAaaqaaiaad6gacqGHRaWk
+% caaIXaaaaOGaeyypa0Jaaiikaiabeg8aYjabew7aLjaacMcadaqhaa
+% WcbaGaamyAaaqaaiaad6gaaaGccqGHsisldaWcaaqaaiabes8a0bqa
+% aiaadIgaaaGaamODamaabmaabaGaaiikaiabeg8aYjabew7aLjaacM
+% cadaqhaaWcbaGaamyAaaqaaiaad6gaaaGccqGHsislcaGGOaGaeqyW
+% diNaeqyTduMaaiykamaaDaaaleaacaWGPbGaeyOeI0IaaGymaaqaai
+% aad6gaaaaakiaawIcacaGLPaaacaGGUaaaaa!5D66!
+\begin{equation}
+(\rho \varepsilon )_i^{n + 1}  = (\rho \varepsilon )_i^n  -
+\frac{\tau }{h}v\left( {(\rho \varepsilon )_i^n  - (\rho
+\varepsilon )_{i - 1}^n } \right).
+\end{equation}
+% MathType!End!2!1!
+But because $\rho \varepsilon = (p+\gamma \pi)/(\gamma-1)$, the
+only compatible approximations for $\gamma$ and $\pi$ are
+% MathType!Translator!2!1!LaTeX.tdl!TeX -- LaTeX 2.09 and later!
+% MathType!MTEF!2!1!+-
+% feaaeaart1ev0aaatCvAUfeBSjuyZL2yd9gzLbvyNv2CaerbuLwBLn
+% hiov2DGi1BTfMBaeXatLxBI9gBaerbd9wDYLwzYbItLDharqqtubsr
+% 4rNCHbGeaGqiVu0Je9sqqrpepC0xbbL8F4rqqrFfpeea0xe9Lq-Jc9
+% vqaqpepm0xbba9pwe9Q8fs0-yqaqpepae9pg0FirpepeKkFr0xfr-x
+% fr-xb9adbaqaaeGaciGaaiaabeqaamaabaabaaGcbaWaaSaaaeaaca
+% aIXaaabaGaeq4SdC2aa0baaSqaaiaadMgaaeaacaWGUbGaey4kaSIa
+% aGymaaaakiabgkHiTiaaigdaaaGaeyypa0ZaaSaaaeaacaaIXaaaba
+% Gaeq4SdC2aa0baaSqaaiaadMgaaeaacaWGUbGaey4kaSIaaGymaaaa
+% kiabgkHiTiaaigdaaaGaeyOeI0YaaSaaaeaacqaHepaDaeaacaWGOb
+% aaaiaadAhadaqadaqaamaalaaabaGaaGymaaqaaiabeo7aNnaaDaaa
+% leaacaWGPbaabaGaamOBaiabgUcaRiaaigdaaaGccqGHsislcaaIXa
+% aaaiabgkHiTmaalaaabaGaaGymaaqaaiabeo7aNnaaDaaaleaacaWG
+% PbGaeyOeI0IaaGymaaqaaiaad6gacqGHRaWkcaaIXaaaaOGaeyOeI0
+% IaaGymaaaaaiaawIcacaGLPaaacaGGUaaaaa!5FA5!
+\begin{equation} \label{a1noncons}
+\begin{gathered}
+ \left(\frac{1}{{\gamma   - 1}}\right)_i^{n + 1} =
+\left(\frac{1}{{\gamma   - 1}}\right)_{i}^{n} - \frac{\tau
+}{h}v\left( \left(\frac{1}{{\gamma   - 1}}\right)_{i}^{n} -
+\left(\frac{1}{{\gamma   - 1}}\right)_{i-1}^{n} \right), \\
+\left(\frac{\gamma \pi}{{\gamma   - 1}}\right)_i^{n + 1} =
+\left(\frac{\gamma \pi}{{\gamma   - 1}}\right)_{i}^{n} -
+\frac{\tau }{h}v\left( \left(\frac{\gamma \pi}{{\gamma   -
+1}}\right)_{i}^{n} - \left(\frac{\gamma \pi}{{\gamma   -
+1}}\right)_{i-1}^{n} \right).
+\end{gathered}
+\end{equation}
+% MathType!End!2!1!
+This is an upwind approximation of the transport equations
+\begin{equation}
+\begin{gathered}
+  (1/(\gamma-1))_t+v(1/(\gamma-1))_x=0,\\
+  (\gamma \pi/(\gamma-1))_t+v(\gamma \pi/(\gamma-1))_x=0.
+  \end{gathered}
+\end{equation}
+\textsl{Any scheme that reduces to (\ref{a1noncons}) for constant
+velocity and pressure will then preserve moving contact
+discontinuities}.
+
+We propose now such a scheme. First, we define the interface
+values by the resolution of Riemann problems at the points \(
+x_{i+1/2} \):\[ W^{n}_{i+1/2}=R(0,W^{n}_{i},W^{n}_{i+1}).\] For
+density, momentum and energy, the classical conservative approach
+is employed:\begin{eqnarray} \label{godupart}
+\rho ^{n+1}_{i} & = & \rho ^{n}_{i}-\frac{\tau }{h}((\rho u)^{n}_{i+1/2}-(\rho u)^{n}_{i-1/2}),\nonumber \\
+(\rho u)^{n+1}_{i} & = & (\rho u)^{n}_{i}-\frac{\tau }{h}((\rho u^{2}+p)^{n}_{i+1/2}-(\rho u^{2}+p)^{n}_{i-1/2}),\label{schemacons} \\
+(\rho E)^{n+1}_{i} & = & (\rho E)^{n}_{i}-\frac{\tau
+}{h}\left(((\rho E+p)u)^{n}_{i+1/2}-((\rho
+E+p)u)^{n}_{i-1/2}\right).\nonumber
+\end{eqnarray}
+On the other hand, an upwind nonconservative scheme is used for
+the last two equations of (\ref{abgralnoncons}). This
+nonconservative scheme is based on the contact discontinuity
+velocity of the Riemann problems solved at the points
+$(x_{i+1/2})$. It reads
+\begin{equation}
+\label{schemanoncons} \alpha ^{n+1}_{i}=\alpha ^{n}_{i}-\frac{\tau
+}{h}(\min (u_{i+1/2}^{n},0)(\alpha _{i+1}^{n}-\alpha
+_{i}^{n})+\max (u_{i-1/2}^{n},0)(\alpha _{i}^{n}-\alpha
+_{i-1}^{n})),
+\end{equation}
+where the quantity $\alpha$ is $1/(\gamma-1)$ or $\gamma \pi
+/(\gamma-1)$. This choice is slightly different from the one of
+Saurel and Abgrall in \cite{saurel99} which is based on the
+approximate Riemann solver of Rusanov. It is easy to check that
+the scheme
+ (\ref{schemanoncons}) reduces to (\ref{a1noncons}) for constant
+velocity and pressure states.
+ \\
+
+With the scheme (\ref{godupart}), (\ref{schemanoncons}), the
+results on the same test case as above are given in Figure
+\ref{a1grall_sys1}. There is an evident improvement.
+\begin{figure}[h]\label{a1grall_sys1}
+\centering
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_rho.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_vit.eps}}
+\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_pres.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_gam.eps}}
+\caption{\textit{Saurel-Abgrall scheme, pressure (line: exact;
+dots: numeric) }}
+\end{figure}
+
+Unfortunately, the previous reasoning cannot be extended to a
+pressure law which is not linear with respect to $\rho
+\varepsilon$. To be more general we thus present in the next
+paragraph a general approach to deal with non-linear pressure
+laws.
+\subsection{A Lagrange plus
+remap scheme for two-fluids flow} In this section we describe the
+results obtained with a Lagrange plus remap scheme. In order to
+have a clear description
+of the scheme, we will recall the bases of the Lagrange scheme construction (see \cite{raviart96}).\\
+\subsubsection*{Notations} We wish to approximate the system of
+conservation laws.
+\begin{equation}
+\label{eq1} W_t + F(W)_x = 0.
+\end{equation}
+For this purpose, we consider an increasing sequence of instants
+$(t^n)_{n \in {\rm N}} $ and a sequence of subdivisions of space
+defined by the points $(x_i^n )_{i \in {\rm Z},n \in {\rm N}} $
+which satisfy
+\[
+\forall i \in {\rm Z},\,\forall n \in {\rm N},\quad x_i^n < x_{i +
+1}^n .
+\]
+The point $x_i^n $ will be the center of the cell $C_i^n $. In
+order to define properly these cells, we thus introduce the
+boundary points
+\[
+x_{i + 1 / 2}^n = \frac{x_i^n + x_{i + 1}^n }{2}.
+\]
+The cell $C_i^n $ is then
+\[
+C_i^n = \left] {x_{i - 1 / 2}^n ,x_{i + 1 / 2}^n } \right[.
+\]
+The time steps are
+\[
+\tau ^n = t^{n + 1} - t^n.
+\]
+The lengths of the cells are
+\[
+h_i^n = x_{i + 1 / 2}^n - x_{i - 1 / 2}^n .
+\]
+In a Lagrange scheme, the cell boundaries move between the time
+step $t^n$ and $t^{n + 1}$ with the velocity $u_{i + 1 / 2}^n $.
+Thus,
+\[
+x_{i + 1 / 2}^{n + 1} = x_{i + 1 / 2}^n + \tau ^nu_{i + 1 / 2}^n .
+\]
+A CFL condition has to be provided in order that the points $x_{i
++ 1 / 2}^{n + 1} $ stay ordered.
+
+\subsubsection*{Scheme construction}
+
+We suppose that at time $t^n$ we know an approximation $W^n$ of
+the exact solution $W$. The approximation is supposed to be
+constant in each cell
+\[
+W(t^n,x) \simeq W^n(x) = W_i^n ,\quad x \in C_i^n .
+\]
+We then compute exactly for a time $\tau ^n$, the entropic
+solution of
+\[
+\begin{array}{l}
+ V_t + F(V)_x = 0, \\
+ V(0,x) = W^n(x),\quad x \in {\rm R}. \\
+ \end{array}
+\]
+This exact resolution is possible under a CFL condition.
+
+The new approximation of $W$ at time $t^{n + 1}$ is then defined
+as the mean value of the exact solution in the new cells
+\[
+W_i^{n + 1} = \frac{1}{h_i^{n + 1} }\int_{C_i^{n + 1} } {V(\tau _n
+,x)dx.}
+\]
+The Riemann problem reads
+\[
+\begin{array}{l}
+ U_t + F(U)_x = 0, \\
+ U(0,x) = \left\{ {{\begin{array}{*{20}c}
+ {W_l \quad x < 0,} \hfill \\
+ {W_r \quad x > 0.} \hfill \\
+\end{array} }} \right. \\
+ \end{array}
+\]
+The solution is self-similar; as before it is noted
+\[
+R(x/t,W_l ,W_r) = U(t,x).
+\]
+In order to have a simpler expression of the scheme, we express
+the conservation law in the space-time trapezoid $Q$ whose
+parallel sides are $C_i^n $ and $C_i^{n + 1} $.
+\[
+0 = \int_Q {\left( {W_t + F(W)_x } \right)} dx \wedge dt  =
+\int_{\partial Q} {\left(F(W)dt - Wdx \right)}.
+\]
+The contour integral in the right hand side is the sum of four
+contributions (bottom, top, right and left)
+\[
+\begin{array}{c}
+ \int_{\partial Q} {\left(F(W)dt - Wdx \right)} = \int_{C_i^n } { - W_i^n dx} \\
+ + \int_{C_i^{n + 1} } {W_i^{n + 1} dx} \\
+ + \int_{t = 0}^{t = \tau ^n} {\left( {F(R(u_{i + 1 /2}^n,W_i^n ,W_{i + 1}^n  ))
+  - R(u_{i + 1 / 2}^n,W_i^n ,W_{i + 1}^n )u_{i + 1 / 2}^n }
+\right)dt} \\
+ - \int_{t = 0}^{t = \tau ^n} {\left( {F(R(u_{i - 1 /2}^n,W_{i - 1}^n ,W_i^n  ))
+  - R(u_{i - 1 / 2}^n,W_{i - 1}^n ,W_i^n  )u_{i - 1 / 2}^n }
+\right)dt} . \\
+ \end{array}
+\]
+This gives
+\begin{equation} \label{a1lag}
+\begin{array}{c}
+ 0 = h_i^{n + 1} W_i^{n + 1} - h_i^n W_i^n \\
+ + \tau _n \left( {F(R(u_{i + 1 / 2}^n,W_i^n ,W_{i + 1}^n  ))
+  - R(u_{i + 1 / 2}^n,W_i^n,W_{i + 1}^n  )u_{i + 1 / 2}^n } \right) \\
+ - \tau _n \left( {F(R(u_{i - 1 / 2}^n,W_{i - 1}^n ,W_i^n  ))
+  - R(u_{i - 1 / 2}^n,W_{i -1}^n ,W_i^n  )u_{i - 1 / 2}^n } \right). \\
+ \end{array}
+\end{equation}
+ When the velocities at the cell boundaries $u_{i + 1 / 2}^n$
+are zero, the scheme reduces to the classical Godunov scheme.
+Another important case is when the velocity $u_{i + 1 / 2}^n$ is
+equal to the contact discontinuity velocity of the Riemann problem
+between the cells $C_i^n$ and $C_{i+1}$. With this choice, a
+moving contact is perfectly resolved. The problem is now to come
+back properly from the Lagrangian grid
+$\left({C_{i}^{n+1}}\right)$ to the Eulerian grid
+$\left({C_{i}^{n}}\right)$. This is the goal of the remap step.
+\subsubsection*{Remap step} Let us first describe the remap step
+of the classical Lagrange and projection scheme. Actually, the
+formula (\ref{a1lag}) defines a value $W_{i}^{n+1/2}$ of the
+conservative variables in the new cells $C_{i}^{n+1}$. This value
+has now to be averaged on the old cells $C_{i}^{n}$. This is
+usually done with the formula
+% MathType!Translator!2!1!LaTeX.tdl!TeX -- LaTeX 2.09 and later!
+% MathType!MTEF!2!1!+-
+% feaaeaart1ev0aaatCvAUfeBSjuyZL2yd9gzLbvyNv2CaerbuLwBLn
+% hiov2DGi1BTfMBaeXatLxBI9gBaerbd9wDYLwzYbItLDharqqtubsr
+% 4rNCHbGeaGqiVu0Je9sqqrpepC0xbbL8F4rqqrFfpeea0xe9Lq-Jc9
+% vqaqpepm0xbba9pwe9Q8fs0-yqaqpepae9pg0FirpepeKkFr0xfr-x
+% fr-xb9adbaqaaeGaciGaaiaabeqaamaabaabaaGceaabbeaacaWGxb
+% Waa0baaSqaaiaadMgaaeaacaWGUbGaey4kaSIaaGymaaaakiabg2da
+% 9maalaaabaGaeqiXdqhabaGaamiAaaaaciGGTbGaaiyyaiaacIhaca
+% GGOaGaamyDamaaDaaaleaacaWGPbGaeyOeI0IaaGymaiaac+cacaaI
+% YaaabaGaamOBaaaakiaacYcacaaIWaGaaiykaiaadEfadaqhaaWcba
+% GaamyAaiabgkHiTiaaigdaaeaacaWGUbGaey4kaSIaaGymaiaac+ca
+% caaIYaaaaOGaeyOeI0YaaSaaaeaacqaHepaDaeaacaWGObaaaiGac2
+% gacaGGPbGaaiOBaiaacIcacaWG1bWaa0baaSqaaiaadMgacqGHRaWk
+% caaIXaGaai4laiaaikdaaeaacaWGUbaaaOGaaiilaiaaicdacaGGPa
+% Gaam4vamaaDaaaleaacaWGPbGaey4kaSIaaGymaaqaaiaad6gacqGH
+% RaWkcaaIXaGaai4laiaaikdaaaGccqGHRaWkaeaacaGGOaGaaGymai
+% abgkHiTmaalaaabaGaeqiXdqhabaGaamiAaaaaciGGTbGaaiyyaiaa
+% cIhacaGGOaGaamyDamaaDaaaleaacaWGPbGaeyOeI0IaaGymaiaac+
+% cacaaIYaaabaGaamOBaaaakiaacYcacaaIWaGaaiykaiabgUcaRmaa
+% laaabaGaeqiXdqhabaGaamiAaaaaciGGTbGaaiyAaiaac6gacaGGOa
+% GaamyDamaaDaaaleaacaWGPbGaey4kaSIaaGymaiaac+cacaaIYaaa
+% baGaamOBaaaakiaacYcacaaIWaGaaiykaiaacMcacaWGxbWaa0baaS
+% qaaiaadMgaaeaacaWGUbGaey4kaSIaaGymaiaac+cacaaIYaaaaOGa
+% aiOlaaaaaa!9121!
+\[
+\displaylines{
+  W_i^{n + 1}  = \frac{\tau }{h}\max (u_{i - 1/2}^n ,0)W_{i - 1}^{n + 1/2}  - \frac{\tau }{h}\min (u_{i + 1/2}^n ,0)W_{i + 1}^{n + 1/2}  +  \cr
+  (1 - \frac{\tau }{h}\max (u_{i - 1/2}^n ,0) + \frac{\tau }{h}\min (u_{i + 1/2}^n ,0))W_i^{n + 1/2} . \cr}
+\]
+% MathType!End!2!1!
+Our scheme is then a very simple correction of the
+Lagrange-projection scheme. The projection is the same for
+density, momentum and energy. But instead of projecting the last
+conservative variable $\rho /(\gamma-1)$, we project the pressure
+according to the formula
+\[
+\displaylines{
+  p_i^{n + 1}  = \frac{\tau }{h}\max (u_{i - 1/2}^n ,0)p_{i - 1}^{n + 1/2}  - \frac{\tau }{h}\min (u_{i + 1/2}^n ,0)p_{i + 1}^{n + 1/2}  +  \cr
+  (1 - \frac{\tau }{h}\max (u_{i - 1/2}^n ,0) + \frac{\tau }{h}\min (u_{i + 1/2}^n ,0))p_i^{n + 1/2} . \cr}
+\]
+It is then possible to compute $\gamma_i^{n + 1}$ thanks to the
+pressure law (according to (\ref{a1condini}), the value of $\pi$
+is indeed $0$). In test cases where $\pi\neq 0$ another quantity
+has to be projected in order to recover $\gamma_i^{n + 1}$ and
+$\pi_i^{n + 1}$. It could be for example the temperature.
+\subsubsection*{Numerical results} With the Lagrange-projection scheme, we
+obtain the results in Figure \ref{a1lag_sys1}. They are comparable
+to the results of the Saurel-Abgrall approach but are a little bit
+more diffusive. This extra diffusion is classical and is of course
+due to the double projection: Godunov averaging and remap
+averaging. This method can be applied though to more general
+pressure laws.
+\begin{figure}[h]\label{a1lag_sys1}
+\centering
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_rho.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_vit.eps}}
+\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_pres.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_gam.eps}}
+\caption{\textit{Lagrange and remap scheme, pressure (line: exact;
+dots: numeric) }}
+\end{figure}
+
+
+
+\section{Axisymmetrical extension of the Godunov scheme}
+
+
+\subsection{\label{num1}Scheme construction and properties}
+
+In this paragraph, we present the extension of scheme (\ref{schemacons},
+\ref{schemanoncons}) to an industrial axisymmetrical case. We will
+first describe a 3D scheme without source term for which stability
+under a CFL condition is well established. Then, using special meshes
+with a rotational invariance we will deduce the 2D axisymmetrical
+scheme keeping the same CFL stability condition. This 2D scheme presents
+a pressure source term that is thus handled explicitly.
+
+Consider a mesh of a 2D open set \( \Omega \subset R^{2} \), that
+is to say a family of open sets \( (\Omega _{k})_{1\leq k\leq N} \)
+satisfying\begin{eqnarray*}
+\overline{\Omega }=\bigcup _{k}\overline{\Omega _{k}}, &  & \\
+i\neq j\Rightarrow \Omega _{i}\cap \Omega _{j}=\oslash . &  &
+\end{eqnarray*}
+We suppose also that \( (x,z)\in \Omega \Rightarrow x>0 \). A 3D
+mesh can be generated by a rotation of \( \Omega  \) around the axis
+\( x=y=0 \) in a referential \( (x,y,z) \). Introducing cylindrical
+coordinates \( (r,\phi ,z) \): \begin{eqnarray*}
+x & = & r\cos \phi ,\\
+y & = & r\sin \phi ,\\
+z & = & z,
+\end{eqnarray*}
+we define the family \( (Q_{k,l}) \) ,\( \quad 1\leq k\leq N \),
+\( \quad 0\leq l\leq P-1 \quad \) by \[ Q_{k,l}=\left\{ (x,y,z)\in
+R^{3},(r,z)\in \Omega _{k}\textrm{ and }\phi \in
+]\frac{2(l-1/2)\pi }{P},\frac{2(l+1/2)\pi }{P}[\right\} .\] In
+order to simply define the 3D scheme, we will slightly change the
+notations. The velocity \( \overrightarrow{u} \) is now a vector
+\( \overrightarrow{u}=(u^{1},u^{2},u^{3})^{T} \). \( W \) will be
+now the vector of conservative variables \( (\rho ,\rho
+\overrightarrow{u},\rho E)^{T} \), with \( E=\varepsilon
++\frac{\overrightarrow{u}\cdot \overrightarrow{u}}{2} \). The
+vector of nonconservative variables is denoted by \( Y=(\alpha
+,\beta )^{T} \) with
+\begin{equation}
+  \alpha=\frac{1}{\gamma -1},\quad \beta=\frac{\gamma \pi}{\gamma
+  -1}.
+\end{equation}
+ We define also a mixed vector as \(
+V=(W,Y)^{T} \).
+
+In 3D, the Euler equations read (\( I_{d} \) is the identity matrix
+of size \( d\times d \))\begin{eqnarray*}
+\rho _{t}+\nabla \cdot (\rho \overrightarrow{u}) & = & 0,\\
+(\rho \overrightarrow{u})_{t}+\nabla \cdot (\rho \overrightarrow{u}\otimes \overrightarrow{u}+pI_{3}) & = & 0,\\
+(\rho E)_{t}+\nabla \cdot ((\rho E+p)\overrightarrow{u}) & = & 0.
+\end{eqnarray*}
+Introducing the three fluxes:\begin{eqnarray*}
+G^{1}(W)=(\rho u^{1},\rho u^{1}u^{1}+p,\rho u^{1}u^{2},\rho u^{1}u^{3},(\rho E+p)u^{1}), &  & \\
+G^{2}(W)=(\rho u^{2},\rho u^{2}u^{1},\rho u^{2}u^{2}+p,\rho u^{2}u^{3},(\rho E+p)u^{2}), &  & \\
+G^{3}(W)=(\rho u^{3},\rho u^{3}u^{1},\rho u^{3}u^{2},\rho u^{3}u^{3}+p,(\rho E+p)u^{3}), &  &
+\end{eqnarray*}
+and the vector flux \( G=(G^{1},G^{2},G^{3})^{T} \), the conservative
+equations can also be written\[
+W_{t}+\nabla \cdot G(W)=0.\]
+
+
+Whereas for the nonconservative variables \( \alpha  \) and \(
+\beta  \), the equations are\[ Y_{t}+\overrightarrow{u}\cdot
+\nabla Y=0,\] and the pressure law is still the stiffened gas law
+which becomes
+\begin{equation}
+\label{eosnoncons} p=\frac{1}{\alpha }\rho \varepsilon
+-\frac{\beta }{\alpha }.
+\end{equation}
+
+
+Now, a 3D scheme reads\[ \int
+_{Q_{k,l}}V^{n+1}_{k,l}-V^{n}_{k,l}+\tau \int _{\partial
+Q_{k,l}}F(V^{n}_{k,l},V^{n}_{k',l'},\nu )=0,\] where \(
+V^{n}_{k,l} \) is the approximation of \( V \) in \( \Omega _{k,l}
+\) at time \( t_{n} \), \( \nu  \) is the outward normal vector to
+\( Q_{k,l} \) on \( \partial Q_{k,l} \) and \( Q_{k',l'} \)
+denotes the neighbors of \( Q_{k,l} \) along its boundary. The
+quantity \( F(\cdot ,\cdot ,\nu ) \) is the numerical flux that we
+will now precisely define. The definition of the numerical flux is
+based on the rotational invariance of the Euler equations. This is
+very classical (see \cite{raviart96}). The only originality is the
+special treatment of the nonconservative variables.
+
+First, a unit vector \( \nu =(\nu ^{1},\nu ^{2},\nu ^{3})^{T} \)
+is given. \( \nu  \) can also be written as \( \nu =(\cos \phi \sin \theta ,\sin \phi \sin \theta ,\cos \theta ) \).
+We define then the rotation matrix \[
+M(\nu )=\left[ \begin{array}{ccc}
+\cos (\phi )\sin (\theta ) & \sin (\phi )\sin (\theta ) & \cos (\theta )\\
+-\sin (\phi ) & \cos (\phi ) & 0\\
+-\cos (\phi )\cos (\theta ) & -\sin (\phi )\cos (\theta ) & \sin (\theta )
+\end{array}\right] ,\]
+which satisfies \( M(\nu )\nu =(1,0,0)^{T} \), and\[
+N(\nu )=\left[ \begin{array}{ccc}
+1 &  & 0\\
+ & M(\nu ) & \\
+0 &  & I_{3}
+\end{array}\right] .\]
+
+
+Consider now two states \( V_{a} \) and \( V_{b} \). In order to
+compute \( F(V_{a},V_{b},\nu ) \), several steps are performed:
+
+\begin{enumerate}
+\item Two rotated states are defined by \( \widetilde{V}_{a}=M(\nu )V_{a} \)
+and \( \widetilde{V}_{b}=M(\nu )V_{b} \).
+\item The following augmented Riemann problem in the normal direction is
+then solved \begin{eqnarray*}
+\widetilde{W}_{t}+G^{1}(\widetilde{W})_{x}=0, &  & \\
+\widetilde{Y}_{t}+\widetilde{u^{1}}\widetilde{Y}_{x}=0, &  & \\
+\widetilde{V}(0,x)=\left\{ \begin{array}{c}
+\widetilde{V}_{a}\textrm{ if }x<0,\\
+\widetilde{V}_{b}\textrm{ if }x>0,
+\end{array}\right.  &  &
+\end{eqnarray*}
+and the solution of this Riemann problem at \( x/t=0 \) is denoted
+by \( \widetilde{V^{*}} \).
+\item An interface state is recovered by the inverse rotation \( V^{*}=M(\nu )^{-1}\widetilde{V^{*}} \).
+\item The numerical flux is then set to
+\begin{equation} \label{flux3d}
+F(V_{a},V_{b},\nu )=(G(W^{*})\cdot \nu ,\min (u^{*}\cdot \nu
+,0)(Y_{b}^{*}-Y_{a}^{*}))^{T}.
+\end{equation}
+It must be noted that \textsl{this numerical flux is
+nonconservative on the $Y$ variables}, as in the Saurel-Abgrall
+scheme that we presented in 1D cases. It can be proved, as in the
+1D case, that the resulting scheme preserves constant pressure and
+velocity states.
+\end{enumerate}
+In our case the scheme will reduce to a 2D one thanks to several
+simplifications.
+
+First, thanks to the rotation matrix \( J\left(\phi \right)=N(\cos
+\phi ,-\sin \phi ,0) \) the axisymmetry condition reads\[
+V^{n}_{k,l'}=J(\frac{2(l'-l)\pi }{P})V^{n}_{k,l}\: .\] Thus, the
+velocity vector can be written \(
+\overrightarrow{u}_{k,l}=(u_{k}\cos (\frac{2l\pi }{P}),u_{k}\sin
+(\frac{2l\pi }{P}),v_{k})^{T} \) and the other variables do not
+depend on \( l \). In this way, the scheme has only to be written
+on the cells \( Q_{k,0} \): \[ \int
+_{Q_{k,0}}(V^{n+1}_{k,0}-V^{n}_{k,0})+\tau \int _{\partial
+Q_{k,0}}F(V^{n}_{k,0},J\left(\frac{2l'\pi
+}{P}\right)V^{n}_{k',0},\nu )=0.\] Denoting \( V_{k,0} \) by \(
+V_{k} \), this scheme then becomes\[ \int _{\Omega
+_{k}}(V^{n+1}_{k}-V^{n}_{k})rdr\, dz+\tau \int _{\partial \Omega
+_{k}}F(V^{n}_{k},V^{n}_{k'},\nu )rd\sigma +\]
+\[
+\frac{\tau P}{2\pi }\left( \int _{\Omega
+_{k}}F(V^{n}_{k,0},J\left(\frac{2\pi }{P}\right)V^{n}_{k,0},\nu
+)rdr\, dz+\int _{\Omega _{k}}F(V^{n}_{k,0},J\left(\frac{-2\pi
+}{P}\right)V^{n}_{k,0},\nu )rdr\right) =0.\] It is then natural to
+let \( P \) tend to \( \infty  \). In the Riemann problems of the
+two last integrals only symmetric rarefaction waves occur. Thus
+those two terms reduce to a pressure term
+\begin{equation} \label{axischeme}
+ \int _{\Omega
+_{k}}(V^{n+1}_{k}-V^{n}_{k})rdr+\tau \int _{\partial \Omega
+_{k}}F(V^{n}_{k},V^{n}_{k'},\nu )rd\sigma -\tau \int _{\Omega
+_{k}}(0,p^{n}_{k},0\cdots 0)^{T}rdr=0.
+\end{equation}
+ We recover, of course, an
+approximation of the axisymmetrical equations,
+namely\begin{eqnarray}
+(\rho r)_{t}+(\rho ur)_{x}+(\rho vr)_{z} & = & 0,\nonumber \\
+(\rho ur)_{t}+(\rho u^{2}r+pr)_{x}+(\rho uvr)_{z} & = & pr,\nonumber \\
+(\rho ur)_{t}+(\rho v u r)_{x}+(\rho v^{2}r+pr)_{z} & = & 0,\nonumber \\
+(\rho Er)_{t}+((\rho E+p)ur)_{x}+((\rho E+p)vr)_{z} & = & 0,\nonumber \\
+\alpha _{t}+u\alpha _{x}+v\alpha _{z} & = & 0,\nonumber \\
+\beta _{t}+u\beta _{x}+v\beta _{z} & = & 0.\nonumber
+\end{eqnarray}
+
+
+One advantage of this approach is that the pressure source term
+can be hand\-led explicitly without modifying the 3D CFL
+condition. We have also avoided axisymmetrical source terms which
+are singular on the axis of rotation. Finally, the resulting
+scheme preserves constant pressure and velocity states. The
+construction of a 2D scheme that preserves contact discontinuities
+with discontinuous tangential velocity is proposed in Nkonga
+\cite{nkonga02}.
+
+
+\subsection{\label{num2}Boundary conditions}
+
+For a boundary cell \( \Omega _{k} \), an artificial value \( V^{n}_{k'} \)
+has to be defined for the part of \( \partial \Omega _{k} \) that
+meets the boundary. For simplicity, suppose that the normal vector
+is \( \nu =(1,0) \). We index by \( (i) \) (as {}``inside'') the
+components of \( V^{n}_{k} \) and by \( (o) \) (as {}``outside'')
+the (unknown) components of \( V^{n}_{k'} \). Several boundary conditions
+can then be used:
+
+\begin{itemize}
+\item {}``Supersonic'' inlet:\[
+V_{o}=\textrm{given state}.\]
+
+\item {}``Supersonic'' outlet:\[
+V_{o}=V_{i}.\]
+
+\item Pressure imposed ({}``subsonic'' outlet). The outside state with
+pressure \( p_{o} \) is linked to the inside state by a one-wave
+(shock or rarefaction). With the notations of §\ref{global}, we find
+\begin{eqnarray*}
+\rho _{o}=1/H_{i}(p_{o}), &  & \\
+u_{o}=u_{i}-X_{i}(p_{o}), &  & \\
+v_{o}=v_{i}, &  & \\
+\alpha _{o}=\alpha _{i}, &  & \\
+\beta _{o}=\beta _{i}. &  &
+\end{eqnarray*}
+
+\item Pressure and density imposed ({}``subsonic'' inlet). Pressure \( p_{o} \)
+and density \( \rho _{o} \) of the outside state are given. The nature
+of the outside state (\( \alpha _{o} \), \( \beta _{o} \)) and the
+tangential velocity (\( v_{o} \)) are also supposed to be known.
+Here, the outside state is linked to the inside state by a one-wave
+(shock or rarefaction) and a contact discontinuity. This permits to
+compute the unknown normal velocity\[
+u_{o}=u_{i}-X_{i}(p_{o}).\]
+
+\item Mirror state. This boundary condition is used at a solid boundary. All the components
+of the state \( W_{o} \) are the same as those of state \( W_{i} \)
+but the normal velocity\[
+u_{o}=-u_{i}.\]
+
+\end{itemize}
+It is important here to point out that the terminology
+{}``subsonic'' or {}``supersonic'' has nothing to do with the true
+nature of the flow at the boundary. It is only linked to what is
+expected when \( W_{o}\simeq W_{i} \). Indeed, we can imagine
+imposing a {}``supersonic'' inlet boundary condition and
+observing, at this boundary a supersonic outflow! The resolution
+of a Riemann problem ensures that the redundant information will
+be forgotten, if necessary. For more details about this technique,
+we refer to Dubois and his theory of partial Riemann problems
+\cite{dubois01}.
+
+\subsection{Optimisation of the CFL number\label{cfl}}
+
+An important constraint in any finite volumes scheme is the
+Courant-Friedrichs-Lewy condition. It expresses that, for any
+finite volume $\Omega_k$ the time step $\tau$ must verify
+\begin{equation}\label{cflcond}
+  \tau < \frac{\text{surf}(\Omega_k)}{\text{length}(\partial
+  \Omega_k)V^*}\quad,
+\end{equation}
+where $V^*$ is the maximal wave speed in the solution of all the
+Riemann problems at the cell interfaces. For a classical Godunov
+scheme on an unstructured mesh, it is proved in \cite{vila91},
+that the CFL condition (\ref{cflcond}) implies the positivity of
+the scheme (the density remains >0) and the fact that it is
+entropic for any Lax entropy. We assume that this is still true
+for the Saurel-Abgrall scheme. In the case where large and small
+cells are mixed, the CFL condition on the small cells imposes the
+global CFL condition. The mixing of large and small cells can be
+imposed by the geometry (an example is given below) and not
+necessarily by a required precision of the computation. In order
+to reduce the computational cost it is possible to use several
+time steps, a small one for the small cells and a bigger one for
+the big cells. Then, several time steps are performed on the small
+cells and less time steps are performed on the big cells. The time
+reduction of the computation can be significant.
+
+The time marching algorithm can be formalized as follow.
+
+First, in a initialization procedure, an ideal time step is
+computed for each cell $\Omega_k$. Let $\delta$ be the desired CFL
+number (for example $\delta=0.7$). The local time step is defined
+by
+\begin{equation}
+\tau _k  = \delta \frac{{\text{surf}(\Omega _k )}}
+{{\text{length}(\partial \Omega _k )V^* }}\quad .
+\end{equation}
+The maximal time step in the mesh is noted $\tau_{\text{max}}$. In
+the same way, the minimal time step is $\tau_{\text{min}}$. Let
+$n_0$ be the smallest integer such that
+$2^{n_0+1}\tau_{\text{min}}>\tau_{\text{max}}$
+ We will then say that the cell $\Omega_k$ has a
+\textsl{CFL level} of $j$ if
+\begin{equation}
+2^{j - 1} \tau_{\text{min}}  \leq \tau _k  < 2^j \tau
+_{\text{min}} .
+\end{equation}
+Thus a CFL level of $1$ corresponds to the smallest cells and a
+CFL level of $n_0$ corresponds to the biggest cells. We define
+also a CFL level for the edges. An edge $E_l$ has a CFL level
+which is the smallest CFL level of its two neighboring cells. In
+order to advance by a global time step $2^{n_0}
+\tau_{\text{min}}$, the algorithm is:
+\begin{itemize}
+  \item for all integer $j=1 \dots n_0$ do
+  \begin{itemize}
+    \item for all edges of CFL level $\leq j$ do
+    \begin{itemize}
+        \item compute the flux
+        \item distribute it to the two neighboring cells
+    \end{itemize}
+    \item enddo
+    \item \textsl{update only the cells of level $\leq j$}
+    \end{itemize}
+  \item enddo
+\end{itemize}
+In this way, the scheme remains conservative and stable. The gain
+in computation time is of order $2^{n_0}$ if the number of small
+cells is small.
+
+\section{An industrial application}
+
+\subsection{Description}
+The industrial system that we wish to simulate is a gas generator
+whose geometry and working order are indicated in Figure
+\ref{gen1}. The gas generator is made of a combustion chamber
+(top), a cooling chamber (middle part) and an evacuation pipe
+(bottom, not represented). Only the working order in the cooling
+chamber will be numerically simulated.
+
+The cooling chamber and the evacuation pipe are separated by a metallic
+membrane. This membrane can withstand a pressure of \( 40\textrm{ bar} \).
+The cooling chamber is around \( 1\textrm{ m} \) high, it is itself
+split into several chambers: a central one and a se\-condary one
+which communicate through an intermediate chamber and two series of
+holes.
+
+At time \( t=0\textrm{ ms} \), the cooling chamber is filled with
+motionless air and water at a pressure of \( 5\textrm{ bar} \).
+Gas at high pressure (\( \sim 100\textrm{ bar} \)) and high
+temperature (\( \sim 2500\textrm{ K} \)) are then produced in the
+combustion chamber. They rush into the cooling chamber and impact
+on the water surface causing a shock wave to propagate in the
+water. When it reaches the bottom membrane, it smashes it. A part
+of the water is then drained in the evacuation pipe, the rest of
+the water is transferred into the secondary chamber where it is
+finally re-injected through very small holes in the draining pipe
+and mixed with the gas still rushing from the combustion chamber.
+The entire process, from the beginning of combustion to the
+beginning of the liquid re-injection has an approximate duration
+of \( 50\textrm{ ms} \). This justifies the fact that we neglect
+vaporization. Of course, for longer simulations, vaporization
+should be taken into account.
+
+As one can note in Figure \ref{gen1}, the real geometry of the
+cooling chamber is not axisymmetrical due to the presence of
+re-injection holes near the draining pipe and connection holes
+between the several chambers. For the simulation we thus replace
+these holes by slits of equivalent area. The simplified
+axisymmetrical geometry is represented in Figure \ref{geomaxi}.
+Here we plot the density. Red corresponds to density values of the
+liquid (\( \sim 1000\textrm{ kg}/\textrm{m}^{3} \)) whereas black
+corresponds to density values of the gas (\( \sim 10\textrm{
+kg}/\textrm{m}^{3} \)).
+
+\subsection{Results}
+A part of the mesh is represented in Figure \ref{mesh}. It appears
+that very small cells are necessary in the injection slits. The
+CFL stability condition is thus very restrictive on these cells.
+In order to avoid a overly long computation we use the algorithm
+described in §\ref{cfl}. With this technique it is possible to
+perform a 50 ms simulation in 5 hours CPU on an 1.4 GHz computer.
+It should be noted that the exact Riemann solver requires at most
+5 Newton iterations for convergence to within $10^{-10}p_0$ where
+$p_0$ is the atmospheric pressure. Most of the zones in the fluid
+flow do not require as many iterations - 2 or 3 only. In
+conclusion, the classical Godunov scheme is not as expensive as is
+so often proclaimed in the literature.
+
+
+
+We then run the scheme presented in §\ref{num1} and §\ref{num2}.
+Gravity is neglected. The boundary conditions and initial
+conditions are depicted in Figure \ref{geomaxi}. The boundary
+conditions are imposed according to the technique described in
+§\ref{num2}:
+
+\begin{itemize}
+\item At the top entrance of the cooling chamber, which corresponds to the
+exit of the combustion chamber, we impose pressure \( p(t) \) and
+density \( \rho (t) \). The time evolution of these quantities is
+determined by experimental measurements. The pressure increases
+from \( 10 \) to \( 120\textrm{ bar} \) in several milliseconds.
+We observe that the speed increases from \( 10 \) to \(
+700\textrm{ m}/\textrm{s} \). The flow thus remains subsonic.
+\item At the bottom exit, the boundary condition is, at first, a solid wall
+con\-dition. When the pressure reaches \( 40\textrm{ bar } \)(this
+occurs around \( 6\textrm{ ms} \)), the boundary condition is
+changed into an outflow condition. We then impose an outside
+pressure of \( 5\textrm{ bar} \). The pressure then drops
+progressively from \( 40 \) to \( 5\textrm{ bar} \), and the
+velocity increases from \( 0 \) to \( 1500\textrm{ m}/\textrm{s}
+\). The flow is thus supersonic at the end of the computation.
+\end{itemize}
+Then, in Figures \ref{cavit}, \ref{working1} and \ref{working2}
+iso-densities for several instants are plotted. We can point out
+the following:
+
+\begin{itemize}
+\item At \( 10\textrm{ ms} \), the gas begins to push the water. The free
+surface is slightly deformed. We observe a smoothing of the
+density profiles due to the numerical diffusion of the interface.
+But despite the first order scheme (and thanks to a quite fine
+mesh..)., the interface is easily recognized.
+\item The instant \( 15\textrm{ ms} \) is after the bursting of the membrane.
+We can see that the central part of the water in the cooling chamber
+has been drained into the evacuation pipe.
+\item At instants \( 20\textrm{ ms} \) and \( 25\textrm{ ms} \), water
+has already entered the secondary chamber, forming a jet against its
+boundary. The jet is numerically diffused but still visible.
+\item At instant \( 50\textrm{ ms} \), the jet has impacted on the free
+surface in the secondary chamber. We observe that the re-injection
+has started (small jet at the bottom).
+\item In Figure \ref{cavit}, we  plot pressure in order to
+demonstrate the appearance of negative values of the pressure.
+These negative values appear in the bottom nozzle where a strong
+drop of pressure is probably triggering cavitation.
+\end{itemize}
+\vspace{0.3cm} Measurements on a real gas generator were performed
+at the ``Direction des Constructions Navales'' (DCN) in Toulon
+(France). Excellent agreement is observed in the central part of
+the cooling chamber. For example, the bursting time of the
+separating membrane is predicted with an error of a few percent.
+More precise comparisons with experiments have now to be performed
+in the secondary chambers.
+
+\vspace{0.3cm}
+{
+\begin{figure}
+
+\caption{Gas generator\label{gen1}}
+
+{\centering \subfigure[gas-generator (start)]
+{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur1.eps}}}
+\subfigure[gas-generator
+(middle)]{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur2.ps}}}
+\subfigure[gas-generator
+(end)]{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur3.ps}}}
+\par}
+\end{figure}
+
+\begin{figure}
+
+\caption{Boundaries\label{geomaxi}}
+
+{\centering \subfigure[axisymmetrical geometry and boundaries]
+{\resizebox*{!}{10cm}{\includegraphics{images_gen/boundariessansgaz.eps}}}
+\par}
+\end{figure}
+
+\begin{figure}
+
+\caption{Mesh\label{mesh}}
+
+{\centering \subfigure[Mesh (partial view)]{\resizebox*{!}{6cm}{\includegraphics{mesh.eps}}} \par}
+\end{figure}
+
+\begin{figure}
+
+\caption{Cavitation\label{cavit}}
+
+{\centering \subfigure[density (kg/m$^3$) at 10
+ms]{\resizebox*{!}{10cm}{\includegraphics{rho10ms.eps}}}
+\subfigure[pressure (bar) at 10
+ms]{\resizebox*{!}{10cm}{\includegraphics{pres10ms.eps}}} \par}
+\end{figure}
+
+\begin{figure}
+
+\caption{Density plots (\protect\( kg/m^{3}\protect
+\))\label{working1}}
+
+{\centering \subfigure[density at 15
+ms]{\resizebox*{!}{10cm}{\includegraphics{rho15ms.eps}}}
+\subfigure[density at 20
+ms]{\resizebox*{!}{10cm}{\includegraphics{rho20ms.eps}}} \par}
+
+\end{figure}
+
+\begin{figure}
+
+\caption{Density plots (\protect\( kg/m^{3}\protect
+\))\label{working2}}
+
+{\centering \subfigure[density at 25
+ms]{\resizebox*{!}{10cm}{\includegraphics{rho25ms.eps}}}
+\subfigure[density at 50
+ms]{\resizebox*{!}{10cm}{\includegraphics{rho50ms.eps}}}
+\par}
+\end{figure}
+\par}
+\vspace{0.3cm}
+
+\section{Conclusion}
+In this paper we have first recalled basic facts on compressible
+multifluid flows. We have also carefully described the spurious
+pressure oscillations phenomenon that arises in any conservative
+Godunov scheme applied to multifluid flows.
+
+We focused on two remedies to suppress these oscillations. The
+first fix has been proposed by Saurel and Abgrall in
+\cite{saurel99}. It is based on a nonconservative transport of the
+pressure law coefficients and works only for a stiffened gas
+pressure law. The second fix is, to our knowledge, new and is
+based on a Lagrange plus projection scheme. In the projection step
+we project the pressure instead of the pressure law coefficients.
+The resulting scheme is more diffusive than the Saurel-Abgrall
+scheme but also more general (it works for any pressure law).
+
+Because in our application the stiffened gas law is sufficient we
+decided to exploit the Saurel-Abgrall scheme in a 2D
+axisymmetrical and complex geometry. We had then to deal with some
+practical problems: negative pressures, axisymmetry, unstructured
+meshes, boundary conditions, multi time steps.
+
+After having solved these problems, we were in a situation to
+present a useful industrial numerical simulation.\\
+
+Future studies could now follow several directions:
+\begin{itemize}
+  \item The scheme should be extended to second order. We have not
+  done it because in axisymmetrical cases, the classical second
+  order extensions (as the MUSCL method of Van Leer \cite{vanleer79}) are
+  surprisingly not straightforward.
+  \item The second important aspect is to be able to deal with
+  true cavitation, i.e. the vaporization of the liquid in a
+  metastable state. Some progress has been obtained in the case
+  of a liquid-vapor flow in \cite{helluy02}. The case of the
+  three-phase flow with air, liquid and vapor is being studied. Some
+  preliminary results can be found in \cite{barberon02}.
+\end{itemize}
+
+\section{Appendix \label{appendix}}
+
+\subsection{Entropy and hyperbolicity}
+
+We study here the hyperbolicity of (\ref{slc}), (\ref{presslaw}).
+For this purpose, it is classical to introduce the specific
+entropy\[ s^{0}=\frac{p+\pi }{\rho ^{\gamma }}=s^{0}(W).\] A
+simple computation shows that if \( W \) is a regular solution of
+(\ref{presslaw}), (\ref{slc}), then \( s^{0} \) satisfies the
+advection equation\[ s^{0}_t+us^{0}_x=0.\] Thus, for any function
+\( g \) of \( s^{0} \), $\gamma$ and $\pi$ an additional
+conservation law is satisfied by \( \rho g(s^{0},\gamma,\pi ) \)
+\[ (\rho g(s^{0},\gamma,\pi
+))_t+(\rho u g(s^{0},\gamma,\pi ))_x=0.\] If \( W\rightarrow
+S(W)=\rho g(s^{0},\gamma,\pi ) \) is convex, we get in this way
+all the Lax entropies of system (\ref{slc}), (\ref{presslaw}). For
+a proof of this result, we refer to the review paper of
+\cite{harten98}. According to Mock's theorem \cite{mock80} the
+convexity of \( S \) would then imply hyperbolicity. Here, we
+prefer to carry out a more direct calculation. Always for regular
+solutions, we set\[ Y=\left(
+\begin{array}{c}
+\rho \\
+u\\
+s^{0}\\
+\gamma \\
+\pi
+\end{array}\right) .\]
+We then have\[ Y_t+B(Y)Y_x=0,\] with \[ B(Y)=\left(
+\begin{array}{ccccc}
+u & \rho  & 0 & 0 & 0\\
+\gamma \frac{p+\pi }{\rho ^{2}} & u & \rho ^{\gamma -1} &
+ \frac{(p+\pi )\ln (\rho )}{\rho}& -\frac{1}{\rho }\\
+0 & 0 & u & 0 &0\\
+0 & 0 & 0 & u &0\\
+0 & 0 & 0 & 0 & u
+\end{array}\right) .\]
+The eigenvalues of \( B \) are \( (u-c,u,u,u,u+c) \) with \(
+c^{2}=\gamma \frac{p+\pi }{\rho }. \) Thus, if \( \rho >0 \), the
+system is hyperbolic if and only if \[ p+\pi \geq 0.\]
+
+
+\begin{rem}
+\label{detente}When \( p \) tends to \( -\pi  \) keeping the
+specific entropy constant, which is the case in a rarefaction
+wave, we get:\[ \rho =C\, \left( p+\pi \right) ^{1/\gamma
+}\rightarrow \, 0.\] Thus, the limiting case \( p=-\pi  \)
+corresponds to a zero density \( \rho =0 \). This means that, in a
+liquid, vacuum corresponds to a negative value of the pressure.
+\end{rem}
+
+\subsection{\label{global}Global resolution of the Riemann problem}
+
+As in the case of gas dynamics for one fluid, the fields \( 1 \)
+and \( 3 \), which correspond to the eigenvalues \( u-c \) and \(
+u+c \) are genuinely non-linear whereas the field \( 2 \)
+corresponding to the multiple eigenvalue \( u \) is linearly
+degenerate (contact discontinuity).
+
+At present, we have written several forms (conservative or not)
+for the convection equations. All these forms are formally
+equivalent. It is important to verify that they are correct also
+for discontinuous solutions.
+
+Let us consider a discontinuity propagating with velocity \(
+\sigma  \). Indexes (a) and (b) will be relative to the two sides
+of the discontinuity. Rankine-Hugoniot relations read, in this
+case
+\[ \sigma (W_{a}-W_{b})=F(W_{a})-F(W_{b}).\] Introducing the
+relative velocity to the discontinuity and the specific volume \[
+v=u-\sigma ,\qquad \tau =\frac{1}{\rho },\] the jump relations
+become \begin{eqnarray*}
+M=\rho _{a}v_{a} & = & \rho _{b}v_{b},\\
+\rho _{a}v^{2}_{a}+p_{a} & = & \rho _{b}v^{2}_{b}+p_{b},\\
+(\rho _{a}(\varepsilon _{a}+\frac{v^{2}_{a}}{2}+p_{a})v_{a} & = & (\rho _{b}(\varepsilon _{b}+\frac{v^{2}_{b}}{2})+p_{b})v_{b},\\
+M\gamma _{a} & = & M\gamma _{b}, \\
+M\pi _{a} & = & M\pi _{b}.
+\end{eqnarray*}
+
+
+The last two relations implie that \( \gamma  \) and $\pi$ can
+jump only at the contact discontinuity (when \( M=0). \) On the
+other hand, a simple computation shows that \( \gamma  \) and
+$\pi$ are Riemann invariants for the fields \( 1 \) and \( 3 \).
+
+\begin{rem}
+\label{noncons1}These two properties imply that in genuinely
+non-linear fields the coefficients \( \gamma  \) and \( \pi  \)
+are constant. Outside the contact discontinuity, the computations
+are thus identical to the case of a single fluid. These classical
+computations can be found for example in the book of Godlewski and
+Raviart \cite{raviart96}. They are briefly sketched below.
+\end{rem}
+\begin{rem}
+\label{noncons2}We have also given a sense to the nonconservative
+products in the last two transport equations in
+(\ref{abgralnoncons}) because \( u \) and the pressure law
+coefficients cannot present a simultaneous jump.
+\end{rem}
+Solving the Riemann problem means finding the weak entropy
+solution of\[
+\begin{array}{c}
+W_t+F(W)_x=0,\\
+W(0,x)=\left\{ \begin{array}{c}
+W_{l}\textrm{ if }x<0,\\
+W_{r}\textrm{ if }x>0.
+\end{array}\right.
+\end{array}\]
+This solution is supposed to be self-similar\[
+W(t,x)=R\left(\frac{x}{t},W_{l},W_{r}\right).\] It is made up of
+constant states separated by shock waves, rarefaction waves or a
+contact discontinuity. It is thus of the form \[ R(\xi
+,W_{l},W_{r})=\left\{ \begin{array}{lll}
+W_{l}&\textrm{ if }&\xi <\lambda ^{-}_{1},\\
+W_{I}&\textrm{ if }&\lambda ^{+}_{1}<\xi <\lambda _{2},\\
+W_{II}&\textrm{ if }&\lambda _{2}<\xi <\lambda ^{-}_{3},\\
+W_{r}&\textrm{ if }&\lambda ^{+}_{3}<\xi ,
+\end{array}\right. \]
+where the unknowns are \( W_{I} \), \( W_{II} \) and the
+velocities \( \lambda _{2} \), \( \lambda ^{\pm }_{i} \), \( i=1,3
+\) which satisfy \( \lambda ^{-}_{1}\leq \lambda ^{+}_{1}<\lambda
+_{2}<\lambda ^{-}_{3}\leq \lambda ^{+}_{3} \).
+
+Furthermore, if \( \lambda ^{-}_{i}<\lambda ^{+}_{i} \) (resp. if
+\( \lambda ^{-}_{i}=\lambda ^{+}_{i} \)) then the \( i \)-wave is
+a rarefaction wave (resp. a shock of velocity \( \sigma =\lambda
+^{-}_{i}=\lambda ^{+}_{i} \)). When the \( i \)-wave is a
+rarefaction, the computation of \( W=R(\xi ,W_{l},W_{r}) \) , for
+\( \lambda ^{-}_{i}<\xi <\lambda ^{+}_{i} \) is classically
+carried out by expressing that the three Riemann invariants are
+constant in the \( i \)-rarefaction (see \cite{raviart96}).
+
+On the other hand, we have \( p_{I}=p_{II}=p^{\star }. \) If no
+vacuum occurs, we can also write \( u_{I}=u_{II}=u^{\star }. \)
+Moreover, from remark \ref{noncons1}, we have that \( \gamma
+_{I}=\gamma _{l} \), \( \gamma _{II}=\gamma _{r} \), \( \pi
+_{I}=\pi _{l} \), \( \pi _{II}=\pi _{r} \). It is then classical
+to compute the 1- and 3-waves from the pressure \( p^{\star } \)
+common to the two intermediate states \( W_{I} \) et \( W_{II} \).
+For this purpose, we introduce the functions\[ h_{a}(p^{\star
+})=\tau _{a}\frac{(\gamma _{a}+1)(p_{a}+\pi _{a})+(\gamma
+_{a}-1)(p^{\star }+\pi _{a})}{(\gamma _{a}+1)(p^{\star }+\pi
+_{a})+(\gamma _{a}-1)(p_{a}+\pi _{a})},\quad a=l\textrm{ or }r,\]
+\[
+\Phi _{a}(p^{\star })=\sqrt{(p^{\star }-p_{a})(\tau
+_{a}-h_{a}(p^{\star }))},\]
+\[
+g_{a}(p^{\star })=\tau _{a}\left( \frac{p_{a}+\pi _{a}}{p^{\star
+}+\pi _{a}}\right) ^{1/\gamma _{a}},\]
+\[
+\Psi _{a}(p^{\star })=\frac{2}{\gamma _{a}-1}(\tau _{a}\gamma
+_{a}(p_{a}+\pi _{a}))^{1/2}\left( (\frac{p^{\star }+\pi
+_{a}}{p_{a}+\pi _{a}})^{\frac{\gamma _{a}-1}{2\gamma
+_{a}}}-1\right) ,\]
+\[
+X_{a}(p^{\star })=\left\{ \begin{array}{ccc}
+\Phi _{a}(p^{\star }) & \textrm{if} & p^{\star }>p_{a},\\
+\Psi _{a}(p^{\star }) & \textrm{if} & p^{\star }<p_{a},
+\end{array}\right. \]
+\[
+H_{a}(p^{\star })=\left\{ \begin{array}{ccc}
+h_{a}(p^{\star }) & \textrm{if} & p^{\star }>p_{a},\\
+g_{a}(p^{\star }) & \textrm{if} & p^{\star }<p_{a}.
+\end{array}\right. \]
+We thus get\[ u_{I}=u_{l}-X_{l}(p^{\star }),\]
+\[
+u_{II}=u_{r}+X_{r}(p^{\star }),\]
+\[
+\tau _{I}=H_{l}(p^{\star }),\]
+\[
+\tau _{II}=H_{r}(p^{\star }),\] and the Riemann problem is solved
+when \( p^{\star } \) is known.
+
+If no vacuum region appears, the following theorem holds.
+
+\begin{thm}
+Let \( p_{0}=\min (\pi _{l},\pi _{r}) \). If \begin{equation}
+\label{classique} u_{r}-u_{l}\leq -\left(
+X_{l}(-p_{0})+X_{r}(-p_{0})\right) ,
+\end{equation}
+then the Riemann problem has a unique solution. The pressure \(
+p^{\star }\geq -p_{0} \) is the unique solution of\[
+u_{l}-X_{l}(p^{\star })=u_{r}+X_{r}(p^{\star }).\]
+
+\end{thm}
+This result is quite similar to the case of the Riemann problem
+for a single fluid. For the proof we refer (for example) to
+\cite{godunov79}, \cite{raviart96}.
+
+When inequality (\ref{classique}) is not true, a vacuum has to be
+introduced. This vacuum region appears in the fluid whose
+coefficient \( \pi  \) is the smallest.
+
+\begin{thm}
+If \[ u_{r}-u_{l}>-\left( X_{l}(-p_{0})+X_{r}(-p_{0})\right) ,\]
+the Riemann problem has still an entropy solution. For example, if
+\( p_{0}=\pi _{l} \), then we have \( p^{\star }=-p_{0} \), \(
+\rho _{I}=0 \), \( u^{\star }=u_{II}=u_{r}+X_{r}(p^{\star }) \).
+\( u_{I}=u_{l}-X_{l}(p^{\star }) \), and, in general \( u_{I}\neq
+u_{II} \).
+\end{thm}
+\begin{proof}
+Suppose that \( p_{0}=\min (\pi _{l},\pi _{r})=\pi _{l} \). In the
+two open sets \( x<u^{\star }t \) and \( x>u^{\star }t \), the
+computation of the 1- and 3-wave curves is identical to the
+mono-fluid case. Thus, \( W(t,x) \) is indeed an entropy solution
+of the Riemann problem in these two open sets. It is then
+sufficient to verify that, at the contact discontinuity \(
+x/t=u^{\star } \), Rankine-Hugoniot jump relations are satisfied,
+together with the entropy condition. The discontinuity velocity is
+\( \sigma =u^{\star }. \) We thus have \( v_{II}=u^{\star }-\sigma
+=0 \). Mass conservation \( \rho _{I}v_{I}=0=\rho _{II}v_{II} \)
+is then satisfied. In the same way, \( \rho _{I}v_{I}^{2}+p^{\star
+}=p^{\star }=\rho _{II}v_{II}^{2}+p^{\star } \). The jump relation
+for the conservation of \( \rho \varphi  \) is also satisfied: \(
+\rho _{I}v_{I}\varphi _{I}=0=\rho _{II}v_{II}\varphi _{II} \). For
+the energy jump relation, we use the fact that the 1-wave is
+necessarily a rarefaction because \( p^{\star }=-p_{0}\leq p_{l}
+\). However, in a rarefaction, when \( p\rightarrow -\pi  \), then
+\( \rho \varepsilon +\pi \rightarrow 0 \) (see remark
+\ref{detente}) and we have \( (\rho _{I}\varepsilon _{I}+p^{\star
+})v_{I}+\rho _{I}\frac{v^{3}_{I}}{2}=0=(\rho _{II}\varepsilon
+_{II}+p^{\star })v_{II}+\rho _{II}\frac{v^{3}_{II}}{2} \).
+Finally, the entropy inequality (which degenerates to an equality)
+is also satisfied: \( \rho _{I}v_{I}s_{I}=0=\rho _{II}v_{II}s_{II}
+\).
+\end{proof}
+\bibliographystyle{plain}
+\bibliography{axigen}
+%trsltx-end-ignore
+\end{document}
