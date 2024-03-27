@@ -44,6 +44,7 @@ pub enum LtxNode {
     Group(Vec<LtxNode>),       // a group of nodes between { and }
     Math(Vec<LtxNode>),        // a math environment between $ and $ or \( and \)
     DisplayMath(Vec<LtxNode>), // a display math environment between $$ and $$ or \[ and \]
+    None,                     // when the syntaxic analysis fails
 }
 
 impl LtxNode {
@@ -53,13 +54,22 @@ impl LtxNode {
         // the \n's are important for parsing initial or closing %'s
         let s = format!("{{\n{}\n}}", s);
         //println!("new: {}", s);
-        group_node(&s).unwrap().1
+        let grpn = group_node(&s);
+        match grpn {
+            Ok((_, grpn)) => grpn,
+            Err(err) => {
+                println!("Syntax error near: {:?}", err);
+                println!("Returning an empty analysis");
+                LtxNode::None
+            }
+        }
     }
 
     ///Iters in the ltxnode and extracts all the command names
     pub fn extracts_commands(&self) -> Vec<String> {
         let mut cmd_list = vec![];
         match self {
+            LtxNode::None => (),
             LtxNode::Text(_) => (),
             LtxNode::Comment(_) => (),
             LtxNode::Label(_) => (),
@@ -91,6 +101,7 @@ impl LtxNode {
     pub fn extracts_labels(&self) -> Vec<String> {
         let mut label_list = vec![];
         match self {
+            LtxNode::None => (),
             LtxNode::Text(_) => (),
             LtxNode::Comment(_) => (),
             LtxNode::Command(_) => (),
@@ -122,6 +133,7 @@ impl LtxNode {
     pub fn extracts_references(&self) -> Vec<String> {
         let mut ref_list = vec![];
         match self {
+            LtxNode::None => (),
             LtxNode::Text(_) => (),
             LtxNode::Comment(_) => (),
             LtxNode::Command(_) => (),
@@ -515,7 +527,7 @@ $ \frac{1}{2}$
     fn test_full() {
         let str = r#"
 % comment
-\ref{toto}        
+\ref{toto} \à
 \item a \\
 $ \frac{a}{b} $
 \label{toto}
@@ -532,3 +544,4 @@ $ \frac{a}{b} $
         println!("{}", latex.to_ebnf());
     }
 }
+

@@ -80,27 +80,29 @@ impl Trsltx {
             chunks: Vec::new(),
         }
     }
-    pub fn read_file(&mut self) {
-        let input_file = std::fs::read_to_string(&self.input_file_name).expect("cannot read file");
+    pub fn read_file(&mut self) -> Result<(), String> {
+        let input_file = std::fs::read_to_string(&self.input_file_name).
+        map_err(|e| format!("Cannot read file: {:?}", e))?;
         // replace \r characters by nothing
         let input_file = input_file.replace("\r", "");
         let mut input_file = input_file.split("\\begin{document}");
         self.preamble = input_file
             .next()
-            .expect("Error in extracting body.")
+            .ok_or("Error in extracting preamble.")?
             .to_string();
         let mut input_file = input_file
             .next()
-            .expect("No \\begin{document} in the tex file.")
+            .ok_or("No \\begin{document} in the tex file.")?
             .split("\\end{document}");
         self.body = input_file
             .next()
-            .expect("Error in extracting body.")
+            .ok_or("Error in extracting body.")?
             .to_string();
         self.afterword = input_file
             .next()
-            .expect("No \\end{document} in the tex file.")
+            .ok_or("No \\end{document} in the tex file.")?
             .to_string();
+        Ok(())
     }
 
     pub fn translate(&mut self) {
@@ -118,7 +120,7 @@ impl Trsltx {
     // by defaults, the chunks are marked as Translate
     // the chunks enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
     // are marked as Unchanged
-    pub fn extract_chunks(&mut self) {
+    pub fn extract_chunks(&mut self) -> Result<(), String> {
         let toscan = self.body.clone();
         // add %trsltx-split before each %trsltx-begin-ignore
         let toscan = toscan.replace(
@@ -131,20 +133,18 @@ impl Trsltx {
         let chunks = toscan.split("%trsltx-split\n");
         for chunk in chunks {
             if chunk.contains("%trsltx-begin-ignore") {
-                assert!(
-                    chunk.contains("%trsltx-end-ignore"),
-                    "Ignored chunks cannot be split."
-                );
+                if !chunk.contains("%trsltx-end-ignore") {
+                    return Err("Unbalanced %trsltx-begin-ignore".to_string());
+                }
                 self.chunks.push((chunk.to_string(), ChunkType::Unchanged));
             } else if chunk.contains("%trsltx-end-ignore") {
-                panic!("Unbalanced %trsltx-end-ignore");
+                return Err("Unbalanced %trsltx-end-ignore".to_string());
             } else {
                 self.chunks.push((chunk.to_string(), ChunkType::Translate));
             }
         }
 
         let numchunks = self.chunks.len();
-
 
         for i in 0..numchunks {
             let (s, t) = self.chunks[i].clone();
@@ -163,6 +163,7 @@ impl Trsltx {
         //     self.chunks[numchunks - 1] = (s, ChunkType::Unchanged);
         // }
         println!("{:?}", self.chunks);
+        Ok(())
     }
 
     pub fn translate_chunks(&mut self) {
@@ -179,18 +180,27 @@ impl Trsltx {
                         println!("Chunk too long: {}", chunk_length);
                     }
                     assert!(chunk_length < 3000, "Chunk too long");
-        
+
                     println!("Translating chunk {} of {}", count, numchunks);
-                    let trs_chunk = translate_one_chunk(
+                    let trs_try = translate_one_chunk(
                         chunk.as_str(),
                         self.input_lang.as_str(),
                         self.output_lang.as_str(),
                     );
-                    // append the split message
-                    if count > 1 {
-                        body_translated.push_str("%trsltx-split\n");
+                    match trs_try {
+                        Ok(trs_chunk) => {
+                            // append the split message
+                            if count > 1 {
+                                body_translated.push_str("%trsltx-split\n");
+                            }
+                            body_translated.push_str(trs_chunk.as_str());
+                        }
+                        Err(e) => {
+                            println!("Error in translating chunk: {:?}", e);
+                            println!("Leave chunk {} of {} unchanged", count, numchunks);
+                            body_translated.push_str(chunk.as_str());
+                        }
                     }
-                    body_translated.push_str(trs_chunk.as_str());
                 }
                 ChunkType::Unchanged => {
                     count += 1;
@@ -208,12 +218,12 @@ impl Trsltx {
         self.body_translated = body_translated;
     }
 
-    pub fn write_file(&self) {
+    pub fn write_file(&self)-> Result<(), String> {
         let mut output_file =
-            std::fs::File::create(&self.output_file_name).expect("cannot create file");
+            std::fs::File::create(&self.output_file_name).map_err(|e| format!("Cannot create file: {:?}", e))?;
         output_file
             .write_all(self.preamble.as_bytes())
-            .expect("cannot write to file");
+            .map_err(|e| format!("Cannot write to file: {:?}", e))?;
 
         // write the translated body
         // create the latex env trsltx because the prompt
@@ -221,17 +231,19 @@ impl Trsltx {
         // \begin{trsltx} and \end{trsltx}
         output_file
             .write_all("\\newenvironment{trsltx}{}{}\n\\begin{document}".as_bytes())
-            .expect("cannot write to file");
+            .map_err(|e| format!("Cannot write to file: {:?}", e))?;
 
         output_file
             .write_all(self.body_translated.as_bytes())
-            .expect("cannot write to file");
+            .map_err(|e| format!("Cannot write to file: {:?}", e))?;
         output_file
             .write_all("\\end{document}".as_bytes())
-            .expect("cannot write to file");
+            .map_err(|e| format!("Cannot write to file: {:?}", e))?;
         output_file
             .write_all(self.afterword.as_bytes())
-            .expect("cannot write to file");
+            .map_err(|e| format!("Cannot write to file: {:?}", e))?;
+    
+    Ok(())
     }
 }
 
@@ -262,7 +274,7 @@ pub fn get_lang_name(lang: &str) -> String {
 /// send the question
 /// and returns an answer
 #[allow(dead_code)]
-fn chat_with_ts(question: &str) -> String {
+fn chat_with_ts(question: &str) -> Result<String, String> {
     // get the api key from the file "api_key.txt" or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
         // if the file exists, get the api key from the file
@@ -296,7 +308,7 @@ fn chat_with_ts(question: &str) -> String {
 
     let answer: String = match res {
         Ok(resp) => {
-            let text = resp["text"].as_str().expect("Failed to get text");
+            let text = resp["text"].as_str().ok_or("The result of Textsynth does not contain text")?;
             //println!("{:?}", text);
             text.to_string()
         }
@@ -305,27 +317,26 @@ fn chat_with_ts(question: &str) -> String {
             "".to_string()
         }
     };
-
-    answer
+    Ok(answer)
 }
 
 /// one completion operation with the textsynth LLM
 /// send the question and a formal grammar (as Some(String) or None)
 /// and returns an answer
-fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
-    // get the api key from the file "api_key.txt" 
+fn complete_with_ts(prompt: &str, grammar: Option<String>) -> Result<String, String> {
+    // get the api key from the file "api_key.txt"
     //or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
         // if the file exists, get the api key from the file
         // removing the spaces and newlines with trim()
         Ok(api_key) => api_key.trim().to_string(),
-        Err(_) => std::env::var("TEXTSYNTH_API_KEY").expect("You have to provide an api key in the file api_key.txt or by export TEXTSYNTH_API_KEY=api_key"),
+        Err(_) => std::env::var("TEXTSYNTH_API_KEY").map_err(|e| format!("You have to provide an api key in the file api_key.txt or by export TEXTSYNTH_API_KEY=api_key. Error: {:?}", e))?,
     };
 
     // call the textsynth REST API
     let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/completions";
     //let url = "https://api.textsynth.com/v1/engines/llama2_70B/completions";
-    
+
     let max_tokens = 1000;
 
     use serde_json::json;
@@ -358,14 +369,14 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&req)
         .send()
-        .expect("Failed to send request")
+        .map_err(|e| format!("Failed to send request: {:?}", e))?
         .json::<Value>();
     println!("{:?}", res);
 
     let answer: String = match res {
         Ok(resp) => {
             //println!("{:?}", resp);
-            let text = resp["text"].as_str().expect("Failed to get text");
+            let text = resp["text"].as_str().ok_or("The result of Textsynth does not contain text")?;
             //println!("{:?}", text);
             text.to_string()
         }
@@ -375,7 +386,7 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
         }
     };
 
-    answer
+    Ok(answer)
 }
 
 mod ltxprs;
@@ -386,9 +397,10 @@ use ltxprs::LtxNode;
 /// the preprompt is in the file "prompt.txt"
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
-fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> String {
+fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Result<String, String> {
     // get the preprompt
-    let mut prompt = std::fs::read_to_string("src/prompt.txt").expect("cannot read preprompt");
+    let mut prompt = std::fs::read_to_string("src/prompt.txt")
+        .map_err(|_| "cannot read preprompt".to_string())?;
 
     let input_lang = get_lang_name(input_lang).to_string();
     let output_lang = get_lang_name(output_lang).to_string();
@@ -402,22 +414,29 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Stri
     // exit(0);
     //let trs_chunk = chat_with_ts(question.as_str());
     let ast_chunk = LtxNode::new(&chunk);
-    let cmds = ast_chunk.extracts_commands();
-    let grammar =  ast_chunk.to_ebnf().trim().to_string();
-
-    println!("{}", grammar);
-    let trs_chunk = complete_with_ts(&question.as_str(), Some(grammar));
+    //let cmds = ast_chunk.extracts_commands();
+    //println!("{:?}", ast_chunk);
+    let grammar = match ast_chunk {
+        LtxNode::None => None,
+        _ => Some(ast_chunk.to_ebnf().trim().to_string()),
+    };
+    println!("Grammar: {:?}", grammar);
+    let trs_try = complete_with_ts(&question.as_str(), grammar);
     //let trs_chunk = complete_with_ts(&question.as_str(), None);
 
     // remove the text before \begin{trsltx} and after \end{trsltx}
     // if they exist, do nothing if they do not exist
+    let trs_chunk = match trs_try {
+        Ok(trs_chunk) => trs_chunk,
+        Err(e) => return Err(e),
+    };
     let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>();
-    if trs_chunk.len() >= 2 {
+    Ok(if trs_chunk.len() >= 2 {
         let trs_chunk = trs_chunk[1].split("\\end{trsltx}").collect::<Vec<&str>>()[0];
         trs_chunk.to_string()
     } else {
         "".to_string()
-    }
+    })
     // let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>()[1];
     // let trs_chunk = trs_chunk.split("\\end{trsltx}").collect::<Vec<&str>>()[0];
     // trs_chunk.to_string()
@@ -431,26 +450,24 @@ mod tests {
     #[test]
     fn test_chat_with_ts() {
         let question = "Q: Is Madrid the capital of Spain ?\nA:";
-        let answer = chat_with_ts(question);
+        let answer = chat_with_ts(question).unwrap();
         println!("{:?}", answer);
         assert!(answer.contains("Madrid"));
     }
     #[test]
     fn test_complete_grammar_ts() {
         let question = "Q: Is Tokyo the capital of Spain ?\nA:\n";
-        let grammar = 
-r#"root   ::= "yes" | "no""#;
+        let grammar = r#"root   ::= "yes" | "no""#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
-        let answer = complete_with_ts(question, Some(grammar));
+        let answer = complete_with_ts(question, Some(grammar)).unwrap();
         //let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
         assert!(answer.contains("No") || answer.contains("no"));
     }
     #[test]
     fn test_2complete_grammar_ts() {
-        let question =
-r#"
+        let question = r#"
 Question: 
 What is the capital of France?
 Give a false answer.
@@ -458,8 +475,7 @@ Give a false answer.
 Answer:
 
 "#;
-        let grammar = 
-r#"root   ::= [A-Z][a-z]*"#;
+        let grammar = r#"root   ::= [A-Z][a-z]*"#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
         let answer = complete_with_ts(question, Some(grammar));
@@ -467,28 +483,27 @@ r#"root   ::= [A-Z][a-z]*"#;
         println!("{:?}", answer);
     }
 
-
     #[test]
     fn test_translate_with_grammar() {
         // prompt in the file "test/trs_sample_gram.txt"
-        let prompt = std::fs::read_to_string("test/trs_sample_gram.txt").expect("cannot read prompt");
+        let prompt =
+            std::fs::read_to_string("test/trs_sample_gram.txt").expect("cannot read prompt");
         // grammar in "src/sample.ebnf"
         let grammar = std::fs::read_to_string("src/sample.ebnf").expect("cannot read grammar");
-        let str=complete_with_ts(&prompt, None);
+        let str = complete_with_ts(&prompt, None).unwrap();
         // print str in the terminal with true newlines
         println!("No grammar -------------------------------------------");
         let parts = str.split("\\n");
         for part in parts {
             println!("{}", part);
-        }   
+        }
 
-        let str=complete_with_ts(&prompt, Some(grammar));
+        let str = complete_with_ts(&prompt, Some(grammar)).unwrap();
         // print str in the terminal with true newlines
         println!("With grammar -------------------------------------------");
         let parts = str.split("\\n");
         for part in parts {
             println!("{}", part);
-        }   
-    
+        }
     }
 }

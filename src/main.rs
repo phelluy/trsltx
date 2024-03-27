@@ -14,7 +14,7 @@ struct Cli {
 
 use trsltx::Trsltx;
 
-fn main() {
+fn main() -> Result<(), String> {
     let args = Cli::parse();
     let input_file = args.input_file.as_str();
     let output_file = args.output_file.as_str();
@@ -45,8 +45,10 @@ fn main() {
 
     let mut trsltx = Trsltx::new(input_lang, output_lang, input_file_name, output_file_name);
 
-    trsltx.read_file();
-    trsltx.extract_chunks();
+    trsltx.read_file()?;
+    trsltx.extract_chunks()?;
     trsltx.translate();
-    trsltx.write_file();
+    trsltx.write_file()?;
+
+    Ok(())
 }
