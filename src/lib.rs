@@ -378,6 +378,8 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
     answer
 }
 
+mod ltxprs;
+
 use ltxprs::LtxNode;
 
 /// translate a latex chunk using the textsynth LLM api
