@@ -1,27 +1,6 @@
 //! This library is a parser for a subset of LateX.
 //! It uses the nom library.
 //! It can extract a W3C EBNF grammar of the latex parsed chunk.
-//! this example must fail
-//! # Examples
-//! ```
-//!let str = r#"
-//!% comment
-//!\ref{toto}        
-//!\item a \\
-//!$ \frac{a}{b} $
-//!\label{toto}
-//!\item {\blue {\b \ref{tata} \label{titi}}}
-//! "#;
-//!let latex = LtxNode::new(str);
-//!println!("{:?}", latex);
-//!let cmds = latex.extracts_commands();
-//!println!("commands: {:?}", cmds);
-//!let labels = latex.extracts_labels();
-//!println!("labels: {:?}", labels);
-//!let refs = latex.extracts_references();
-//!println!("references: {:?}", refs);
-//! println!("{}",latex.to_ebnf());
-//!```
 
 //the grammar of the chunk is as follows
 // the list of possible commands is added afterward
@@ -487,7 +466,7 @@ mod tests {
     fn recursive_test() {
         let str = r#"{
 \item a
-% rien
+% rien 
 \item {\blue b}
 }
         "#;
