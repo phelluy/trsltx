@@ -158,10 +158,10 @@ impl Trsltx {
             }
         }
         // mark last chunk as Unchanged
-        if numchunks > 0 {
-            let (s, _) = self.chunks[numchunks - 1].clone();
-            self.chunks[numchunks - 1] = (s, ChunkType::Unchanged);
-        }
+        // if numchunks > 0 {
+        //     let (s, _) = self.chunks[numchunks - 1].clone();
+        //     self.chunks[numchunks - 1] = (s, ChunkType::Unchanged);
+        // }
         println!("{:?}", self.chunks);
     }
 
@@ -360,6 +360,7 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
         .send()
         .expect("Failed to send request")
         .json::<Value>();
+    println!("{:?}", res);
 
     let answer: String = match res {
         Ok(resp) => {
@@ -400,12 +401,11 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Stri
     //let trs_chunk = chat_with_ts(question.as_str());
     let ast_chunk = LtxNode::new(&chunk);
     let cmds = ast_chunk.extracts_commands();
-    let grammar = match cmds.len()  {
-        0 => None,
-        _ => Some(ast_chunk.to_ebnf()),
-    };
+    let grammar =  ast_chunk.to_ebnf().trim().to_string();
 
-    let trs_chunk = complete_with_ts(&question.as_str(), grammar);
+    println!("{}", grammar);
+    let trs_chunk = complete_with_ts(&question.as_str(), Some(grammar));
+    //let trs_chunk = complete_with_ts(&question.as_str(), None);
 
     // remove the text before \begin{trsltx} and after \end{trsltx}
     // if they exist, do nothing if they do not exist
