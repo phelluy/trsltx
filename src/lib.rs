@@ -84,7 +84,7 @@ impl Trsltx {
         let input_file = std::fs::read_to_string(&self.input_file_name)
             .map_err(|e| format!("Cannot read file: {:?}", e))?;
         // replace \r characters by nothing
-        let input_file = input_file.replace("\r", "");
+        let input_file = input_file.replace('\r', "");
         let mut input_file = input_file.split("\\begin{document}");
         self.preamble = input_file
             .next()
@@ -148,13 +148,10 @@ impl Trsltx {
 
         for i in 0..numchunks {
             let (s, t) = self.chunks[i].clone();
-            match t {
-                ChunkType::Unchanged => {
-                    // s = s.replace("%trsltx-begin-ignore\n", "");
-                    // s = s.replace("%trsltx-end-ignore\n", "");
-                    self.chunks[i] = (s, ChunkType::Unchanged);
-                }
-                _ => (),
+            if let ChunkType::Unchanged = t {
+                // s = s.replace("%trsltx-begin-ignore\n", "");
+                // s = s.replace("%trsltx-end-ignore\n", "");
+                self.chunks[i] = (s, ChunkType::Unchanged);
             }
         }
         // mark last chunk as Unchanged
@@ -177,9 +174,13 @@ impl Trsltx {
                 ChunkType::Translate => {
                     count += 1;
                     let chunk_length = chunk.len();
-                    let trs_try = if chunk_length >= 3000 {
+                    let max_chunk_length = 4000;
+                    let trs_try = if chunk_length >= max_chunk_length {
                         println!("{:?}", chunk);
-                        println!("Chunk too long: {}", chunk_length);
+                        println!(
+                            "Chunk too long: {} above {}",
+                            chunk_length, max_chunk_length
+                        );
                         println!("Leave chunk {} of {} unchanged", count, numchunks);
                         Ok(chunk.to_string())
                     } else {
@@ -420,15 +421,15 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     // println!("{:?}", question);
     // exit(0);
     //let trs_chunk = chat_with_ts(question.as_str());
-    let ast_chunk = LtxNode::new(&chunk);
+    let ast_chunk = LtxNode::new(chunk);
     //let cmds = ast_chunk.extracts_commands();
     //println!("{:?}", ast_chunk);
     let grammar = match ast_chunk {
         LtxNode::None => None,
         _ => Some(ast_chunk.to_ebnf().trim().to_string()),
     };
-    println!("Grammar: {:?}", grammar);
-    let trs_try = complete_with_ts(&question.as_str(), grammar);
+    println!("Grammar: {}", ast_chunk.to_ebnf());
+    let trs_try = complete_with_ts(question.as_str(), grammar);
     //let trs_chunk = complete_with_ts(&question.as_str(), None);
 
     // remove the text before \begin{trsltx} and after \end{trsltx}

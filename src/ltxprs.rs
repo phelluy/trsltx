@@ -183,10 +183,10 @@ impl LtxNode {
         // remove the trailing " | "
         s = s.trim_end_matches(" | ").to_string();
         // replace all the "\" by "\\"
-        s = s.replace("\\", "\\\\");
-        let s = s0 + &s;
+        s = s.replace('\\', "\\\\");
+        //let s = s0 + &s;
         //println!("{}", s);
-        s
+        s0 + &s
     }
 }
 
@@ -298,7 +298,7 @@ fn command_node(input: &str) -> nom::IResult<&str, LtxNode> {
     map(command, |s: &str| {
         // add "\\" at the beginning of the command
         // if the string is not already a backslash_special
-        let cs = if s.starts_with("\\") {
+        let cs = if s.starts_with('\\') {
             s.to_string()
         } else {
             format!("\\{}", s)
@@ -331,11 +331,11 @@ fn math_node(input: &str) -> nom::IResult<&str, LtxNode> {
     alt((
         map(
             delimited(tag("$"), many0(alt((atom_node, group_node))), tag("$")),
-            |v| LtxNode::Math(v),
+            LtxNode::Math,
         ),
         map(
             delimited(tag("\\("), many0(alt((atom_node, group_node))), tag("\\)")),
-            |v| LtxNode::Math(v),
+            LtxNode::Math,
         ),
     ))(input)
 }
@@ -346,11 +346,11 @@ fn display_math_node(input: &str) -> nom::IResult<&str, LtxNode> {
     alt((
         map(
             delimited(tag("$$"), many0(alt((atom_node, group_node))), tag("$$")),
-            |v| LtxNode::DisplayMath(v),
+            LtxNode::DisplayMath,
         ),
         map(
             delimited(tag("\\["), many0(alt((atom_node, group_node))), tag("\\]")),
-            |v| LtxNode::DisplayMath(v),
+            LtxNode::DisplayMath,
         ),
     ))(input)
 }
@@ -376,7 +376,7 @@ fn group_node(input: &str) -> nom::IResult<&str, LtxNode> {
             many0(alt((atom_node, group_node, math_node, display_math_node))),
             char('}'),
         ),
-        |v| LtxNode::Group(v),
+        LtxNode::Group,
     )(input)
 }
 
