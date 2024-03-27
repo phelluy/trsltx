@@ -81,8 +81,8 @@ impl Trsltx {
         }
     }
     pub fn read_file(&mut self) -> Result<(), String> {
-        let input_file = std::fs::read_to_string(&self.input_file_name).
-        map_err(|e| format!("Cannot read file: {:?}", e))?;
+        let input_file = std::fs::read_to_string(&self.input_file_name)
+            .map_err(|e| format!("Cannot read file: {:?}", e))?;
         // replace \r characters by nothing
         let input_file = input_file.replace("\r", "");
         let mut input_file = input_file.split("\\begin{document}");
@@ -165,7 +165,9 @@ impl Trsltx {
         println!("{:?}", self.chunks);
         Ok(())
     }
-
+    // this function should not fail because if it encounters an error
+    // it translates the chunk without the grammar analysis or
+    // on the worst errors, it leaves the chunk unchanged
     pub fn translate_chunks(&mut self) {
         let mut body_translated = String::new();
         let numchunks = self.chunks.len();
@@ -175,18 +177,19 @@ impl Trsltx {
                 ChunkType::Translate => {
                     count += 1;
                     let chunk_length = chunk.len();
-                    if chunk_length >= 3000 {
+                    let trs_try = if chunk_length >= 3000 {
                         println!("{:?}", chunk);
                         println!("Chunk too long: {}", chunk_length);
-                    }
-                    assert!(chunk_length < 3000, "Chunk too long");
-
-                    println!("Translating chunk {} of {}", count, numchunks);
-                    let trs_try = translate_one_chunk(
-                        chunk.as_str(),
-                        self.input_lang.as_str(),
-                        self.output_lang.as_str(),
-                    );
+                        println!("Leave chunk {} of {} unchanged", count, numchunks);
+                        Ok(chunk.to_string())
+                    } else {
+                        println!("Translating chunk {} of {}", count, numchunks);
+                        translate_one_chunk(
+                            chunk.as_str(),
+                            self.input_lang.as_str(),
+                            self.output_lang.as_str(),
+                        )
+                    };
                     match trs_try {
                         Ok(trs_chunk) => {
                             // append the split message
@@ -218,9 +221,9 @@ impl Trsltx {
         self.body_translated = body_translated;
     }
 
-    pub fn write_file(&self)-> Result<(), String> {
-        let mut output_file =
-            std::fs::File::create(&self.output_file_name).map_err(|e| format!("Cannot create file: {:?}", e))?;
+    pub fn write_file(&self) -> Result<(), String> {
+        let mut output_file = std::fs::File::create(&self.output_file_name)
+            .map_err(|e| format!("Cannot create file: {:?}", e))?;
         output_file
             .write_all(self.preamble.as_bytes())
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;
@@ -242,8 +245,8 @@ impl Trsltx {
         output_file
             .write_all(self.afterword.as_bytes())
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;
-    
-    Ok(())
+
+        Ok(())
     }
 }
 
@@ -308,7 +311,9 @@ fn chat_with_ts(question: &str) -> Result<String, String> {
 
     let answer: String = match res {
         Ok(resp) => {
-            let text = resp["text"].as_str().ok_or("The result of Textsynth does not contain text")?;
+            let text = resp["text"]
+                .as_str()
+                .ok_or("The result of Textsynth does not contain text")?;
             //println!("{:?}", text);
             text.to_string()
         }
@@ -376,7 +381,9 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> Result<String, Str
     let answer: String = match res {
         Ok(resp) => {
             //println!("{:?}", resp);
-            let text = resp["text"].as_str().ok_or("The result of Textsynth does not contain text")?;
+            let text = resp["text"]
+                .as_str()
+                .ok_or("The result of Textsynth does not contain text")?;
             //println!("{:?}", text);
             text.to_string()
         }
