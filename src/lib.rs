@@ -82,6 +82,8 @@ impl Trsltx {
     }
     pub fn read_file(&mut self) {
         let input_file = std::fs::read_to_string(&self.input_file_name).expect("cannot read file");
+        // replace \r characters by nothing
+        let input_file = input_file.replace("\r", "");
         let mut input_file = input_file.split("\\begin{document}");
         self.preamble = input_file
             .next()
@@ -143,10 +145,9 @@ impl Trsltx {
 
         let numchunks = self.chunks.len();
 
+
         for i in 0..numchunks {
             let (s, t) = self.chunks[i].clone();
-            let chunk_length = s.len();
-            assert!(chunk_length < 1000, "Chunk too long");
             match t {
                 ChunkType::Unchanged => {
                     // s = s.replace("%trsltx-begin-ignore\n", "");
@@ -155,6 +156,11 @@ impl Trsltx {
                 }
                 _ => (),
             }
+        }
+        // mark last chunk as Unchanged
+        if numchunks > 0 {
+            let (s, _) = self.chunks[numchunks - 1].clone();
+            self.chunks[numchunks - 1] = (s, ChunkType::Unchanged);
         }
         println!("{:?}", self.chunks);
     }
@@ -167,6 +173,13 @@ impl Trsltx {
             match t {
                 ChunkType::Translate => {
                     count += 1;
+                    let chunk_length = chunk.len();
+                    if chunk_length >= 3000 {
+                        println!("{:?}", chunk);
+                        println!("Chunk too long: {}", chunk_length);
+                    }
+                    assert!(chunk_length < 3000, "Chunk too long");
+        
                     println!("Translating chunk {} of {}", count, numchunks);
                     let trs_chunk = translate_one_chunk(
                         chunk.as_str(),
@@ -364,6 +377,8 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> String {
     answer
 }
 
+use ltxprs::LtxNode;
+
 /// translate a latex chunk using the textsynth LLM api
 /// the preprompt is in the file "prompt.txt"
 /// the api key is in the file "api_key.txt" or
@@ -383,12 +398,27 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Stri
     // println!("{:?}", question);
     // exit(0);
     //let trs_chunk = chat_with_ts(question.as_str());
-    let trs_chunk = complete_with_ts(&question.as_str(), None);
+    let ast_chunk = LtxNode::new(&chunk);
+    let cmds = ast_chunk.extracts_commands();
+    let grammar = match cmds.len()  {
+        0 => None,
+        _ => Some(ast_chunk.to_ebnf()),
+    };
+
+    let trs_chunk = complete_with_ts(&question.as_str(), grammar);
 
     // remove the text before \begin{trsltx} and after \end{trsltx}
-    let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>()[1];
-    let trs_chunk = trs_chunk.split("\\end{trsltx}").collect::<Vec<&str>>()[0];
-    trs_chunk.to_string()
+    // if they exist, do nothing if they do not exist
+    let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>();
+    if trs_chunk.len() >= 2 {
+        let trs_chunk = trs_chunk[1].split("\\end{trsltx}").collect::<Vec<&str>>()[0];
+        trs_chunk.to_string()
+    } else {
+        "".to_string()
+    }
+    // let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>()[1];
+    // let trs_chunk = trs_chunk.split("\\end{trsltx}").collect::<Vec<&str>>()[0];
+    // trs_chunk.to_string()
 }
 
 // test the chat_with_ts function
