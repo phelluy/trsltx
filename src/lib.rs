@@ -36,10 +36,6 @@
 //! The translation is done with a Large Language Model (LLM). It is possible that some LateX errors occur
 //! in the translation by the LLM. You have to correct them by hand.use std::io::Write;
 
-// For debug: useful for stopping the program with exit(0)
-#[allow(unused_imports)]
-use std::process::exit;
-
 use std::io::Write;
 
 #[derive(Debug, Clone)]
@@ -83,7 +79,7 @@ impl Trsltx {
     pub fn read_file(&mut self) -> Result<(), String> {
         let input_file = std::fs::read_to_string(&self.input_file_name)
             .map_err(|e| format!("Cannot read file: {:?}", e))?;
-        // replace \r characters by nothing
+        // replace \r characters by nothing (appear in Windows files...)
         let input_file = input_file.replace('\r', "");
         let mut input_file = input_file.split("\\begin{document}");
         self.preamble = input_file
@@ -105,21 +101,17 @@ impl Trsltx {
         Ok(())
     }
 
+    /// Translate the body of the file
     pub fn translate(&mut self) {
-        // self.body_translated = translate_chunk(
-        //     self.body.as_str(),
-        //     self.input_lang.as_str(),
-        //     self.output_lang.as_str(),
-        // );
         self.translate_chunks();
     }
 
-    // extract the chunks to be translated from the body
-    // the chunks are separated by the string "%trsltx-split\n"
-    // or are enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
-    // by defaults, the chunks are marked as Translate
-    // the chunks enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
-    // are marked as Unchanged
+    /// Extract the chunks to be translated from the body
+    /// the chunks are separated by the string "%trsltx-split\n"
+    /// or are enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
+    /// by defaults, the chunks are marked as Translate
+    /// the chunks enclosed between "%trsltx-begin-ignore\n" and "%trsltx-end-ignore\n"
+    /// are marked as Unchanged
     pub fn extract_chunks(&mut self) -> Result<(), String> {
         let toscan = self.body.clone();
         // add %trsltx-split before each %trsltx-begin-ignore
@@ -162,6 +154,8 @@ impl Trsltx {
         println!("{:?}", self.chunks);
         Ok(())
     }
+
+    /// Same as function "translate"
     // this function should not fail because if it encounters an error
     // it translates the chunk without the grammar analysis or
     // on the worst errors, it leaves the chunk unchanged
@@ -194,6 +188,8 @@ impl Trsltx {
                     match trs_try {
                         Ok(trs_chunk) => {
                             // append the split message
+                            // so that the translated file
+                            // can be reused by trsltx
                             if count > 1 {
                                 body_translated.push_str("%trsltx-split\n");
                             }
@@ -230,8 +226,7 @@ impl Trsltx {
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;
 
         // write the translated body
-        // create the latex env trsltx because the prompt
-        // requires that the translatex chunk is enclosed between
+        // create the latex env trsltx  in case the translatex chunk is enclosed between
         // \begin{trsltx} and \end{trsltx}
         output_file
             .write_all("\\newenvironment{trsltx}{}{}\n\\begin{document}".as_bytes())
@@ -252,8 +247,8 @@ impl Trsltx {
 }
 
 /// Get the long language name from the short two-letter one
-pub fn get_lang_name(lang: &str) -> String {
-    // list of known languages
+pub fn get_lang_name(lang: &str) -> Result<String, String> {
+    // list of known languages xxx
     const LANGUAGES: [(&str, &str); 7] = [
         ("en", "English"),
         ("fr", "French"),
@@ -270,8 +265,8 @@ pub fn get_lang_name(lang: &str) -> String {
         lang_dict.insert(k.to_string(), v.to_string());
     }
 
-    let lang = lang_dict.get(lang).expect("Unknown language");
-    lang.to_string()
+    let lang = lang_dict.get(lang).ok_or("The supported languages are: en,fr,es,de,it,pt,ru. Unsupported language: ".to_owned()+&lang)?;
+    Ok(lang.to_string())
 }
 
 /// one chat operation with the textsynth LLM
@@ -410,8 +405,8 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     let mut prompt = std::fs::read_to_string("src/prompt.txt")
         .map_err(|_| "cannot read preprompt".to_string())?;
 
-    let input_lang = get_lang_name(input_lang).to_string();
-    let output_lang = get_lang_name(output_lang).to_string();
+    let input_lang = get_lang_name(input_lang)?.to_string();
+    let output_lang = get_lang_name(output_lang)?.to_string();
 
     // in the prompt, replace <lang_in> by the input language and <lang_out> by the output language
     prompt = prompt.replace("<lang_in>", input_lang.as_str());
