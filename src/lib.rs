@@ -396,14 +396,24 @@ mod ltxprs;
 
 use ltxprs::LtxNode;
 
+const PREPROMPT: &str = r#"
+Q: Translate the following <lang_in> scientific text, formatted with LateX, into <lang_out>.
+Keep the LateX syntax and formulas. The results must compile without errors with pdflatex.
+Give only the result without preliminaries. 
+Enclose the resulting LateX source between \begin{trsltx} and \end{trsltx}
+Here is the <lang_in> LateX source:
+"#;
+
 /// translate a latex chunk using the textsynth LLM api
 /// the preprompt is in the file "prompt.txt"
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Result<String, String> {
-    // get the preprompt
-    let mut prompt = std::fs::read_to_string("src/prompt.txt")
-        .map_err(|_| "cannot read preprompt".to_string())?;
+    // get the preprompt from a file
+    // let mut prompt = std::fs::read_to_string("src/prompt.txt")
+    //     .map_err(|_| "cannot read preprompt".to_string())?;
+    // or directly from the const PREPROMPT
+    let mut prompt = PREPROMPT.to_string();
 
     let input_lang = get_lang_name(input_lang)?.to_string();
     let output_lang = get_lang_name(output_lang)?.to_string();
