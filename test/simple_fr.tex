@@ -10,7 +10,8 @@
    \providecommand{\fg}{\ifdim\lastskip>\z@\unskip\fi~\frqq}%
 }
 
-\newcommand{\racine}[1]{\sqrt{#1}}
+\newcommand{\oper}[1]{\sqrt{#1}}
+\newcommand{\commandevide}{}
 \makeatother
 \begin{document}
 \title{Exemple de petit fichier \LaTeX}
@@ -26,8 +27,8 @@ Ceci est un exemple minimal de fichier \LaTeX{} en français pour tester
 L'objectif du projet trsltx est de réaliser un outil pour traduire
 des documents \LaTeX{} d'une langue à une autre en conservant la syntaxe.
 %trsltx-split
-Le document peut contenir des formules en ligne comme $x=\sqrt{3}$
-ou hors ligne comme $$x=\sqrt{3}$$ ou
+Le document peut contenir des formules en ligne comme $x=\oper{3}$
+ou hors ligne comme $$x=\oper{3}$$ ou
 \begin{equation}
 \mathbf{A}=\left[\begin{array}{cc}
 1 & 2\\
@@ -44,8 +45,8 @@ comme (\ref{eq_fraction}) ou \cite{tutu}  sans casser les dépendances.
 \section{Conclusion}
 
 %trsltx-begin-ignore
-Cette partie ne 
-sera pas traduite.
+Cette phrase n'est
+ pas traduite.
 %trsltx-end-ignore
 
 L'objectif est-il rempli ? Si ce document compile et semble écrit
@@ -56,5 +57,7 @@ en anglais, peut-être !
 \bibitem{tutu}Un auteur, \emph{Un titre}, une revue, 2021.
 \end{thebibliography}
 %trsltx-end-ignore
-$\quad$
+
+\commandevide
+
 \end{document}
