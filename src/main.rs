@@ -43,6 +43,10 @@ fn main() -> Result<(), String> {
     let input_lang = input_file[1];
     let output_lang = output_file[1];
 
+    if output_lang == input_lang {
+        return Err("The source and target languages are the same".to_string());
+    }
+
     let mut trsltx = Trsltx::new(input_lang, output_lang, input_file_name, output_file_name);
 
     trsltx.read_file()?;

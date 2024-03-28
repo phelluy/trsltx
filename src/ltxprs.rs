@@ -40,6 +40,7 @@ pub enum LtxNode {
     Comment(String),           // a comment starting with a % and ending with a \n
     Label(String),             // a label starting with \label{ and ending with }
     Reference(String),         // a reference starting with \ref{ and ending with }
+    Cite(String),              // a citation starting with \cite{ and ending with }
     Command(String),           // a command starting with a \ and followed by [a-zA-Z]+ or [\&{}[]]
     Group(Vec<LtxNode>),       // a group of nodes between { and }
     Math(Vec<LtxNode>),        // a math environment between $ and $ or \( and \)
@@ -74,6 +75,7 @@ impl LtxNode {
             LtxNode::Comment(_) => (),
             LtxNode::Label(_) => (),
             LtxNode::Reference(_) => (),
+            LtxNode::Cite(_) => (),
             LtxNode::Command(s) => cmd_list.push(s.clone()),
             LtxNode::Group(v) => {
                 for n in v {
@@ -106,6 +108,7 @@ impl LtxNode {
             LtxNode::Comment(_) => (),
             LtxNode::Command(_) => (),
             LtxNode::Reference(_) => (),
+            LtxNode::Cite(_) => (),
             LtxNode::Label(s) => label_list.push(s.clone()),
             LtxNode::Group(v) => {
                 for n in v {
@@ -139,6 +142,7 @@ impl LtxNode {
             LtxNode::Command(_) => (),
             LtxNode::Label(_) => (),
             LtxNode::Reference(s) => ref_list.push(s.clone()),
+            LtxNode::Cite(_) => (),
             LtxNode::Group(v) => {
                 for n in v {
                     ref_list.append(&mut n.extracts_references());
@@ -161,6 +165,39 @@ impl LtxNode {
         ref_list
     }
 
+    ///Iters in the ltxnode and extracts all the citations
+    pub fn extracts_citations(&self) -> Vec<String> {
+        let mut cite_list = vec![];
+        match self {
+            LtxNode::None => (),
+            LtxNode::Text(_) => (),
+            LtxNode::Comment(_) => (),
+            LtxNode::Command(_) => (),
+            LtxNode::Label(_) => (),
+            LtxNode::Reference(_) => (),
+            LtxNode::Cite(s) => cite_list.push(s.clone()),
+            LtxNode::Group(v) => {
+                for n in v {
+                    cite_list.append(&mut n.extracts_citations());
+                }
+            }
+            LtxNode::Math(v) => {
+                for n in v {
+                    cite_list.append(&mut n.extracts_citations());
+                }
+            }
+            LtxNode::DisplayMath(v) => {
+                for n in v {
+                    cite_list.append(&mut n.extracts_citations());
+                }
+            }
+        }
+        // remove repeated entries
+        cite_list.sort();
+        cite_list.dedup();
+        cite_list
+    }
+
     /// Generate the W3C EBNF grammar of the latex chunk
     pub fn to_ebnf(&self) -> String {
         let s0 = GRAMAR.to_string();
@@ -168,6 +205,7 @@ impl LtxNode {
         // on a single line, do it so that the backslashes are not removed
         let labels = self.extracts_labels();
         let refs = self.extracts_references();
+        let cites = self.extracts_citations();
         let cmds = self.extracts_commands();
         // add a fake command for avoiding an empty list of commands
         let mut s = "\ncommand ::= \"\\commandevide\" | ".to_string();
@@ -175,6 +213,9 @@ impl LtxNode {
             s = s + "\"" + l.clone().as_str() + "\"" + " | ";
         }
         for r in refs {
+            s = s + "\"" + r.clone().as_str() + "\"" + " | ";
+        }
+        for r in cites {
             s = s + "\"" + r.clone().as_str() + "\"" + " | ";
         }
         for c in cmds {
@@ -234,6 +275,15 @@ fn label(input: &str) -> nom::IResult<&str, &str> {
     preceded(tag("\\label"), label_braces)(input)
 }
 
+///LtxNode version of the label parser
+fn label_node(input: &str) -> nom::IResult<&str, LtxNode> {
+    map(label, |s: &str| {
+        // prepend \label{ and append }
+        let cs = format!("\\label{{{}}}", s);
+        LtxNode::Label(cs.to_string())
+    })(input)
+}
+
 ///parse a ref: a label_text with a \ref or \eqref prefix
 fn ltxref(input: &str) -> nom::IResult<&str, &str> {
     preceded(alt((tag("\\eqref"), tag("\\ref"))), label_braces)(input)
@@ -250,12 +300,17 @@ fn ltxref_node(input: &str) -> nom::IResult<&str, LtxNode> {
     })(input)
 }
 
-///LtxNode version of the label parser
-fn label_node(input: &str) -> nom::IResult<&str, LtxNode> {
-    map(label, |s: &str| {
-        // prepend \label{ and append }
-        let cs = format!("\\label{{{}}}", s);
-        LtxNode::Label(cs.to_string())
+///parse a cite: a label_text with a \cite prefix
+fn cite(input: &str) -> nom::IResult<&str, &str> {
+    preceded(tag("\\cite"), label_braces)(input)
+}
+
+///LtxNode version of the previous function
+fn cite_node(input: &str) -> nom::IResult<&str, LtxNode> {
+    map(cite, |s: &str| {
+        // prepend \cite{ and append }
+        let cs = format!("\\cite{{{}}}", s);
+        LtxNode::Cite(cs.to_string())
     })(input)
 }
 
@@ -365,6 +420,7 @@ fn atom_node(input: &str) -> nom::IResult<&str, LtxNode> {
         text_node,
         ltxref_node,
         label_node,
+        cite_node,
         command_node,
     ))(input)
 }
@@ -495,6 +551,7 @@ mod tests {
 \item a \\
 % rien 
 \label{toto}
+\cite{tutu}
 \item {\blue {\b \ref{tata} \label{titi}}}
               
               "#;

@@ -39,7 +39,7 @@ Considérons également la fraction
 \frac{x}{y} \label{eq_fraction}
 \end{equation}
 Il faut pouvoir aussi faire des références aux étiquettes existante
-comme (\ref{eq_fraction}) ou  sans casser les dépendances.
+comme (\ref{eq_fraction}) ou \cite{tutu}  sans casser les dépendances.
 
 \section{Conclusion}
 
@@ -50,4 +50,11 @@ sera pas traduite.
 
 L'objectif est-il rempli ? Si ce document compile et semble écrit
 en anglais, peut-être !
+
+%trsltx-begin-ignore
+\begin{thebibliography}{1}
+\bibitem{tutu}Un auteur, \emph{Un titre}, une revue, 2021.
+\end{thebibliography}
+%trsltx-end-ignore
+$\quad$
 \end{document}

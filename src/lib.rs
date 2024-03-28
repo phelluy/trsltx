@@ -103,6 +103,11 @@ impl Trsltx {
 
     /// Translate the body of the file
     pub fn translate(&mut self) {
+        let preamble = adjust_preamble_lang(self.preamble.clone(), self.input_lang.as_str(), self.output_lang.as_str());
+        match preamble {
+            Ok(preamble) => self.preamble = preamble,
+            Err(e) => println!("Found no babel option in preamble: {:?}", e),
+        }
         self.translate_chunks();
     }
 
@@ -245,6 +250,26 @@ impl Trsltx {
         Ok(())
     }
 }
+
+/// If the babel latex option is detected, replace the source
+/// language in the babel option by the target language
+pub fn adjust_preamble_lang(preamble: String, inlang: &str, outlang: &str) -> Result<String, String> {
+    let target_lang = get_lang_name(outlang)?.to_lowercase();
+    let source_lang = get_lang_name(inlang)?.to_lowercase();
+    let mut preamble = preamble.replace(source_lang.as_str(), target_lang.as_str());
+    if target_lang == "russian" {
+        // if \usepackage[T1]{fontenc} is not present in the preamble
+        // issue a warning xxx
+        if !preamble.contains("\\usepackage[T1]{fontenc}") {
+            println!(r#"Warning: \\usepackage[T1]{{fontenc}} is not present in the preamble"#);
+            println!(r#"The Russian language requires \\usepackage[T2A]{{fontenc}}"#);
+            println!(r#"Add \\usepackage[T2A]{{fontenc}} to the preamble"#);
+        }
+        preamble = preamble.replace(r#"\usepackage[T1]{fontenc}"#, r#"\usepackage[T2A]{fontenc}"#);
+    }
+    Ok(preamble)
+}
+
 
 /// Get the long language name from the short two-letter one
 pub fn get_lang_name(lang: &str) -> Result<String, String> {
