@@ -171,6 +171,7 @@ impl Trsltx {
         let numchunks = self.chunks.len();
         let mut count = 0;
         for (chunk, t) in self.chunks.iter() {
+            println!("------------------------------------------");
             match t {
                 ChunkType::Translate => {
                     count += 1;
@@ -436,14 +437,13 @@ Here is the <lang_in> LateX source:
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Result<String, String> {
-
+    println!("Translating chunk: {:?}", chunk);
     if chunk.trim() == r#"\commandevide"# {
         println!("Empty chunk");
         // create a string containing \commandvide followed by a newline
         let s = "\\commandevide\n".to_string();
         return Ok(s);
     }
-    println!("Translating chunk: {:?}", chunk);
     // get the preprompt from a file
     // let mut prompt = std::fs::read_to_string("src/prompt.txt")
     //     .map_err(|_| "cannot read preprompt".to_string())?;
