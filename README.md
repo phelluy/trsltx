@@ -32,12 +32,16 @@ cargo install --path .
 trsltx -i test/simple_fr.tex -o test/simple_de.tex
 ```
 
-The translation is completed using a Large Language Model (LLM) and may contain some LaTeX errors.
+The translation is completed using a Large Language Model (LLM) available on the Texsynth server. It may contain some LaTeX errors.
 Therefore, it is essential to review and manually correct the translated code as necessary.
+
+`trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal BNF grammar to constraint the generated output. 
 
 The original LaTeX file has to be split in not too long chunks by using markers
 `%trsltx-split` in the .tex file on  single lines. `trsltx` will complain if a chunk
 is too long.
+
+The syntax of each fragment is analysed using a lightweight parser. A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
 
 It is also possible to mark a region that should not be translated with the markers
 `%trsltx-begin-ignore` and `%trsltx-end-ignore` on single lines. Ignored regions should not contain
@@ -46,9 +50,9 @@ It is also possible to mark a region that should not be translated with the mark
 Here are a few tips for improved results:
 
 * Your initial tex file must compile without any error, of course...
-* You can define new LaTeX commands, but only in the preamble, before `\begin{document}`;
-* Give meaningfull names to yours macros for helping the translator (e.g. don't call a macro that display the energy `\foo`. Use rather `\energy`!).
-* Don't rename the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, refs and citations may be lost in translation;
+* You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`;
+* Give meaningful names to your macros for helping the translator (e.g. don't call a macro that display the energy `\foo`. A better choice is `\energy`!).
+* Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, refs and citations may be lost in translation;
 * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` environments. 
 
 
