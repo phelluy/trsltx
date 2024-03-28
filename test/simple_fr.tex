@@ -10,7 +10,7 @@
    \providecommand{\fg}{\ifdim\lastskip>\z@\unskip\fi~\frqq}%
 }
 
-\newcommand{\oper}[1]{\sqrt{#1}}
+%\newcommand{\oper}[1]{\sqrt{#1}}
 \makeatother
 \begin{document}
 \title{Exemple de petit fichier \LaTeX}
@@ -26,18 +26,21 @@ Ceci est un exemple minimal de fichier \LaTeX{} en français pour tester
 L'objectif du projet trsltx est de réaliser un outil pour traduire
 des documents \LaTeX{} d'une langue à une autre en conservant la syntaxe.
 %trsltx-split
-Le document peut contenir des formules en ligne comme $x=\oper{3}$
-ou hors ligne comme $$x=\oper{3}$$ ou
+\begin{itemize}
+\item Le document peut contenir des formules en ligne comme $x=\sqrt{3}$
+ou 
+\item hors ligne comme $$x=\sqrt{3}$$ ou
 \begin{equation}
 \mathbf{A}=\left[\begin{array}{cc}
 1 & 2\\
 2 & 1
 \end{array}\right].\label{eq_matrice}
 \end{equation}
-Considérons également la fraction
+\item Considérons également la fraction
 \begin{equation}
 \frac{x}{y} \label{eq_fraction}
 \end{equation}
+\end{itemize}
 Il faut pouvoir aussi faire des références aux étiquettes existante
 comme (\ref{eq_fraction}) ou \cite{tutu}  sans casser les dépendances.
 

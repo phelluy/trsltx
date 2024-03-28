@@ -462,7 +462,7 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     };
     println!("Grammar: {}", ast_chunk.to_ebnf());
     let trs_try = complete_with_ts(question.as_str(), grammar);
-    //let trs_chunk = complete_with_ts(&question.as_str(), None);
+    //let trs_try = complete_with_ts(&question.as_str(), None);
 
     // remove the text before \begin{trsltx} and after \end{trsltx}
     // if they exist, do nothing if they do not exist

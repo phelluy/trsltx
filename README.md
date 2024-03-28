@@ -28,9 +28,8 @@ cargo run -- -i test/simple_fr.tex -o test/simple_de.tex
 Or
 
 ```bash
-cargo build --release
-cp ./target/release/trsltx .
-./trsltx -i test/simple_fr.tex -o test/simple_de.tex
+cargo install --path .
+trsltx -i test/simple_fr.tex -o test/simple_de.tex
 ```
 
 The translation is completed using a Large Language Model (LLM) and may contain some LaTeX errors.
