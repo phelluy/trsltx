@@ -14,7 +14,7 @@ Usage: go in the `trsltx` directory and run
 cargo run
 ```
 
-By default the French LaTeX file `test/simple_fr.tex` is translated into english in `test/simple_en.tex`.
+By default, the French LaTeX file `test/simple_fr.tex` is translated into English in `test/simple_en.tex`.
 
 The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language name.
 Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`. 
@@ -36,12 +36,15 @@ The translation is completed using a Large Language Model (LLM) available on the
 Therefore, it is essential to review and manually correct the translated code as necessary.
 
 `trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal BNF grammar to constraint the generated output. 
+See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar).
 
 The original LaTeX file has to be split in not too long chunks by using markers
-`%trsltx-split` in the .tex file on  single lines. `trsltx` will complain if a chunk
+`%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
 is too long.
 
-The syntax of each fragment is analysed using a lightweight parser. A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
+Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax. A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
+
+The grammar feature is deactivated if the light parser fails. The chunk is partially translated if the server returns an error.
 
 It is also possible to mark a region that should not be translated with the markers
 `%trsltx-begin-ignore` and `%trsltx-end-ignore` on single lines. Ignored regions should not contain
@@ -49,9 +52,9 @@ It is also possible to mark a region that should not be translated with the mark
 
 Here are a few tips for improved results:
 
-* Your initial tex file must compile without any error, of course...
+* Your initial .tex file must compile without any error, of course...
 * You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`;
-* Give meaningful names to your macros for helping the translator (e.g. don't call a macro that display the energy `\foo`. A better choice is `\energy`!).
+* Give meaningful names to your macros for helping the translator (e.g. don't call a macro that displays the energy `\foo`. A better choice is `\energy`!).
 * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, refs and citations may be lost in translation;
 * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` environments. 
 
