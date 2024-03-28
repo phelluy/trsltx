@@ -261,7 +261,7 @@ pub fn adjust_preamble_lang(preamble: String, inlang: &str, outlang: &str) -> Re
     let mut preamble = preamble.replace(source_lang.as_str(), target_lang.as_str());
     if target_lang == "russian" {
         // if \usepackage[T1]{fontenc} is not present in the preamble
-        // issue a warning xxx
+        // issue a warning 
         if !preamble.contains("\\usepackage[T1]{fontenc}") {
             println!(r#"Warning: \\usepackage[T1]{{fontenc}} is not present in the preamble"#);
             println!(r#"The Russian language requires \\usepackage[T2A]{{fontenc}}"#);
@@ -275,7 +275,7 @@ pub fn adjust_preamble_lang(preamble: String, inlang: &str, outlang: &str) -> Re
 
 /// Get the long language name from the short two-letter one
 pub fn get_lang_name(lang: &str) -> Result<String, String> {
-    // list of known languages xxx
+    // list of known languages 
     const LANGUAGES: [(&str, &str); 7] = [
         ("en", "English"),
         ("fr", "French"),
@@ -436,6 +436,14 @@ Here is the <lang_in> LateX source:
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Result<String, String> {
+
+    if chunk.trim() == r#"\commandevide"# {
+        println!("Empty chunk");
+        // create a string containing \commandvide followed by a newline
+        let s = "\\commandevide\n".to_string();
+        return Ok(s);
+    }
+    println!("Translating chunk: {:?}", chunk);
     // get the preprompt from a file
     // let mut prompt = std::fs::read_to_string("src/prompt.txt")
     //     .map_err(|_| "cannot read preprompt".to_string())?;
