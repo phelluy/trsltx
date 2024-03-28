@@ -236,7 +236,7 @@ impl Trsltx {
         // create the latex env trsltx  in case the translatex chunk is enclosed between
         // \begin{trsltx} and \end{trsltx}
         output_file
-            .write_all("\\newenvironment{trsltx}{}{}\n\n\\newcommand{\\commandevide}{}\\begin{document}".as_bytes())
+            .write_all("\\newenvironment{trsltx}{}{}\n\n\\newcommand{\\commandevide}{}\n\\begin{document}".as_bytes())
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;
 
         output_file
