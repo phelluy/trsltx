@@ -81,6 +81,8 @@ impl Trsltx {
             .map_err(|e| format!("Cannot read file: {:?}", e))?;
         // replace \r characters by nothing (appear in Windows files...)
         let input_file = input_file.replace('\r', "");
+        let input_file = input_file.replace("\\end{document}","\\commandevide\n\\end{document}");
+
         let mut input_file = input_file.split("\\begin{document}");
         self.preamble = input_file
             .next()
@@ -234,7 +236,7 @@ impl Trsltx {
         // create the latex env trsltx  in case the translatex chunk is enclosed between
         // \begin{trsltx} and \end{trsltx}
         output_file
-            .write_all("\\newenvironment{trsltx}{}{}\n\\begin{document}".as_bytes())
+            .write_all("\\newenvironment{trsltx}{}{}\n\n\\newcommand{\\commandevide}{}\\begin{document}".as_bytes())
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;
 
         output_file
