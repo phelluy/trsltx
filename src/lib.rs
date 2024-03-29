@@ -83,7 +83,8 @@ impl Trsltx {
             .map_err(|e| format!("Cannot read file: {:?}", e))?;
         // replace \r characters by nothing (appear in Windows files...)
         let input_file = input_file.replace('\r', "");
-        let input_file = input_file.replace("\\end{document}","\\commandevide\n\\end{document}");
+        //let input_file = input_file.replace("\\end{document}", "\\commandevide\n\\end{document}");
+        //let input_file = input_file.replace("\\end{document}", "\\commandevide\n\\end{document}");
 
         let mut input_file = input_file.split("\\begin{document}");
         self.preamble = input_file
@@ -107,12 +108,39 @@ impl Trsltx {
 
     /// Translate the body of the file
     pub fn translate(&mut self) {
-        let preamble = adjust_preamble_lang(self.preamble.clone(), self.input_lang.as_str(), self.output_lang.as_str());
+        let preamble = adjust_preamble_lang(
+            self.preamble.clone(),
+            self.input_lang.as_str(),
+            self.output_lang.as_str(),
+        );
         match preamble {
             Ok(preamble) => self.preamble = preamble,
             Err(e) => println!("Found no babel option in preamble: {:?}", e),
         }
         self.translate_chunks();
+    }
+
+    /// pass the body to print_split a generate a latex string with
+    /// the "%trsltx-split" markers
+    pub fn generate_split_latex(&self, split_length: usize) -> String {
+        let body = self.body.clone();
+        let ltxparse = LtxNode::new(body.as_str());
+        let body = ltxparse.print_split(0, String::new(), split_length);
+        //trim body
+        let body = body.trim();
+        //remove heading { and trailing }
+        let body = body[1..body.len() - 1].to_string();
+
+        // remove the surrounding {} of the body
+        let latex = self.preamble.clone()
+            + "\\begin{document}\n"
+            + &body
+            + "\n\\end{document}\n"
+            + &self.afterword.clone();
+
+        println!("code: {}", latex);
+
+        latex
     }
 
     /// Extract the chunks to be translated from the body
@@ -239,7 +267,10 @@ impl Trsltx {
         // create the latex env trsltx  in case the translatex chunk is enclosed between
         // \begin{trsltx} and \end{trsltx}
         output_file
-            .write_all("\\newenvironment{trsltx}{}{}\n\n\\newcommand{\\commandevide}{}\n\\begin{document}".as_bytes())
+            .write_all(
+                "\\newenvironment{trsltx}{}{}\n\n\\newcommand{\\commandevide}{}\n\\begin{document}"
+                    .as_bytes(),
+            )
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;
 
         output_file
@@ -258,27 +289,33 @@ impl Trsltx {
 
 /// If the babel latex option is detected, replace the source
 /// language in the babel option by the target language
-pub fn adjust_preamble_lang(preamble: String, inlang: &str, outlang: &str) -> Result<String, String> {
+pub fn adjust_preamble_lang(
+    preamble: String,
+    inlang: &str,
+    outlang: &str,
+) -> Result<String, String> {
     let target_lang = get_lang_name(outlang)?.to_lowercase();
     let source_lang = get_lang_name(inlang)?.to_lowercase();
     let mut preamble = preamble.replace(source_lang.as_str(), target_lang.as_str());
     if target_lang == "russian" {
         // if \usepackage[T1]{fontenc} is not present in the preamble
-        // issue a warning 
+        // issue a warning
         if !preamble.contains("\\usepackage[T1]{fontenc}") {
             println!(r#"Warning: \\usepackage[T1]{{fontenc}} is not present in the preamble"#);
             println!(r#"The Russian language requires \\usepackage[T2A]{{fontenc}}"#);
             println!(r#"Add \\usepackage[T2A]{{fontenc}} to the preamble"#);
         }
-        preamble = preamble.replace(r#"\usepackage[T1]{fontenc}"#, r#"\usepackage[T2A]{fontenc}"#);
+        preamble = preamble.replace(
+            r#"\usepackage[T1]{fontenc}"#,
+            r#"\usepackage[T2A]{fontenc}"#,
+        );
     }
     Ok(preamble)
 }
 
-
 /// Get the long language name from the short two-letter one
 pub fn get_lang_name(lang: &str) -> Result<String, String> {
-    // list of known languages 
+    // list of known languages
     const LANGUAGES: [(&str, &str); 7] = [
         ("en", "English"),
         ("fr", "French"),
@@ -295,7 +332,10 @@ pub fn get_lang_name(lang: &str) -> Result<String, String> {
         lang_dict.insert(k.to_string(), v.to_string());
     }
 
-    let lang = lang_dict.get(lang).ok_or("The supported languages are: en,fr,es,de,it,pt,ru. Unsupported language: ".to_owned()+&lang)?;
+    let lang = lang_dict.get(lang).ok_or(
+        "The supported languages are: en,fr,es,de,it,pt,ru. Unsupported language: ".to_owned()
+            + &lang,
+    )?;
     Ok(lang.to_string())
 }
 
@@ -422,7 +462,6 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> Result<String, Str
     Ok(answer)
 }
 
-
 const PREPROMPT: &str = r#"
 Q: Translate the following <lang_in> scientific text, formatted with LateX, into <lang_out>.
 Keep the LateX syntax and formulas. The results must compile without errors with pdflatex.
@@ -437,7 +476,7 @@ Here is the <lang_in> LateX source:
 /// in the environment variable "TEXTSYNTH_API_KEY"
 fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Result<String, String> {
     println!("Translating chunk: {:?}", chunk);
-    if chunk.trim() == r#"\commandevide"# {
+    if chunk.trim() == r#"\commandevide"# || chunk.trim() == "" {
         println!("Empty chunk");
         // create a string containing \commandvide followed by a newline
         let s = "\\commandevide\n".to_string();
