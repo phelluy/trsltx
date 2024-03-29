@@ -38,6 +38,8 @@
 
 use std::io::Write;
 
+use ltxprs::LtxNode;
+
 #[derive(Debug, Clone)]
 enum ChunkType {
     Translate,
@@ -420,9 +422,6 @@ fn complete_with_ts(prompt: &str, grammar: Option<String>) -> Result<String, Str
     Ok(answer)
 }
 
-mod ltxprs;
-
-use ltxprs::LtxNode;
 
 const PREPROMPT: &str = r#"
 Q: Translate the following <lang_in> scientific text, formatted with LateX, into <lang_out>.
@@ -468,6 +467,7 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
         LtxNode::None => None,
         _ => Some(ast_chunk.to_ebnf().trim().to_string()),
     };
+    //ast_chunk.print();
     println!("Grammar: {}", ast_chunk.to_ebnf());
     let trs_try = complete_with_ts(question.as_str(), grammar);
     //let trs_try = complete_with_ts(&question.as_str(), None);
