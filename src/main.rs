@@ -14,7 +14,7 @@ struct Cli {
     input_lang: String,
     #[clap(short, long, default_value = "en")]
     output_lang: String,
-    #[clap(short, long, default_value = "4000")]
+    #[clap(short, long, default_value = "2000")]
     length_split: usize,
 }
 

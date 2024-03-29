@@ -129,9 +129,13 @@ impl Trsltx {
         //trim body
         let body = body.trim();
         //remove heading { and trailing }
-        let body = body[1..body.len() - 1].to_string();
+        let len = body.len();
+        let body = if len >= 2 {
+            body[1..len - 1].to_string()
+        } else {
+            body.to_string()
+        };
 
-        // remove the surrounding {} of the body
         let latex = self.preamble.clone()
             + "\\begin{document}\n"
             + &body

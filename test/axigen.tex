@@ -44,6 +44,8 @@
  }
 
 \makeatother
+
+
 \begin{document}
 
 \title{Practical computation of axisymmetrical multifluid flows}
@@ -141,6 +143,7 @@ Euler system (conservation of mass, momentum and energy, equations
 This multifluid model presents a supplementary
 transport equation when compared to the level-set
 model but it is generally easier to discretize. \\
+%trsltx-begin-ignore
 
 Despite its simplicity and its mathematical perfection, this model
 leads to numerous numerical difficulties as shown in many works
@@ -184,6 +187,7 @@ scheme is quasi-conservative. More precisely, the numerical fluxes
 for mass, momentum and energy are conservative whereas the
 numerical fluxes for the gas law coefficients are not
 conservative.
+
 Hence, the resulting scheme allows slight mass
 transfers between the gas and the liquid. According to numerical
 experiments, this scheme seems to be converging. This is not in
@@ -338,6 +342,8 @@ prove a Lax-Wendroff convergence result for the Saurel-Abgrall
   have to set are also useful for a rigorous definition of the
   boundary conditions that are described in part 4.
 \end{itemize}
+
+%trsltx-end-ignore
 
 \section{A two-fluids model for air-water flows}
 
@@ -607,6 +613,9 @@ problem at each cell interface \( x_{i+1/2} \) and takes the
 form\[ F^{n}_{i+1/2}=F(R(0^{+\textrm{ or
 }-},W^{n}_{i},W^{n}_{i+1})).\]
 
+
+%trsltx-begin-ignore
+
 The initial conditions are (\ref{a1condini}). We plot only the
 pressure at time $t=1$ ms. The study interval is $]0,L[$ with
 $L=1$ m. The number of cells is fixed at $N=400$ and the CFL
@@ -617,7 +626,7 @@ two fluids). The results are in Figure \ref{a1godu_sys1}.
 \centering
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_rho.eps}}
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_vit.eps}}
-\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_pres.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_pres.eps}}
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/godu_gam.eps}}
 \caption{\textit{Godunov scheme, pressure (line: exact; dots:
 numeric) }}
@@ -740,7 +749,7 @@ results on the same test case as above are given in Figure
 \centering
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_rho.eps}}
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_vit.eps}}
-\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_pres.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_pres.eps}}
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/grall_gam.eps}}
 \caption{\textit{Saurel-Abgrall scheme, pressure (line: exact;
 dots: numeric) }}
@@ -813,6 +822,7 @@ solution of
  \end{array}
 \]
 This exact resolution is possible under a CFL condition.
+
 
 The new approximation of $W$ at time $t^{n + 1}$ is then defined
 as the mean value of the exact solution in the new cells
@@ -911,7 +921,7 @@ pressure laws.
 \centering
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_rho.eps}}
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_vit.eps}}
-\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_pres.eps}}
+%\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_pres.eps}}
 %\resizebox*{8.cm}{6.cm}{\includegraphics{annexe1_eps/lag_gam.eps}}
 \caption{\textit{Lagrange and remap scheme, pressure (line: exact;
 dots: numeric) }}
@@ -1342,71 +1352,71 @@ More precise comparisons with experiments have now to be performed
 in the secondary chambers.
 
 \vspace{0.3cm}
-{
-\begin{figure}
+%{
+% \begin{figure}
 
-\caption{Gas generator\label{gen1}}
+% \caption{Gas generator\label{gen1}}
 
-{\centering \subfigure[gas-generator (start)]
-{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur1.eps}}}
-\subfigure[gas-generator
-(middle)]{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur2.ps}}}
-\subfigure[gas-generator
-(end)]{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur3.ps}}}
-\par}
-\end{figure}
+% {\centering \subfigure[gas-generator (start)]
+% {\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur1.eps}}}
+% \subfigure[gas-generator
+% (middle)]{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur2.ps}}}
+% \subfigure[gas-generator
+% (end)]{\resizebox*{!}{8cm}{\includegraphics{images_gen/generateur3.ps}}}
+% \par}
+% \end{figure}
 
-\begin{figure}
+% \begin{figure}
 
-\caption{Boundaries\label{geomaxi}}
+% \caption{Boundaries\label{geomaxi}}
 
-{\centering \subfigure[axisymmetrical geometry and boundaries]
-{\resizebox*{!}{10cm}{\includegraphics{images_gen/boundariessansgaz.eps}}}
-\par}
-\end{figure}
+% {\centering \subfigure[axisymmetrical geometry and boundaries]
+% {\resizebox*{!}{10cm}{\includegraphics{images_gen/boundariessansgaz.eps}}}
+% \par}
+% \end{figure}
 
-\begin{figure}
+% \begin{figure}
 
-\caption{Mesh\label{mesh}}
+% \caption{Mesh\label{mesh}}
 
-{\centering \subfigure[Mesh (partial view)]{\resizebox*{!}{6cm}{\includegraphics{mesh.eps}}} \par}
-\end{figure}
+% {\centering \subfigure[Mesh (partial view)]{\resizebox*{!}{6cm}{\includegraphics{mesh.eps}}} \par}
+% \end{figure}
 
-\begin{figure}
+% \begin{figure}
 
-\caption{Cavitation\label{cavit}}
+% \caption{Cavitation\label{cavit}}
 
-{\centering \subfigure[density (kg/m$^3$) at 10
-ms]{\resizebox*{!}{10cm}{\includegraphics{rho10ms.eps}}}
-\subfigure[pressure (bar) at 10
-ms]{\resizebox*{!}{10cm}{\includegraphics{pres10ms.eps}}} \par}
-\end{figure}
+% {\centering \subfigure[density (kg/m$^3$) at 10
+% ms]{\resizebox*{!}{10cm}{\includegraphics{rho10ms.eps}}}
+% \subfigure[pressure (bar) at 10
+% ms]{\resizebox*{!}{10cm}{\includegraphics{pres10ms.eps}}} \par}
+% \end{figure}
 
-\begin{figure}
+% \begin{figure}
 
-\caption{Density plots (\protect\( kg/m^{3}\protect
-\))\label{working1}}
+% \caption{Density plots (\protect\( kg/m^{3}\protect
+% \))\label{working1}}
 
-{\centering \subfigure[density at 15
-ms]{\resizebox*{!}{10cm}{\includegraphics{rho15ms.eps}}}
-\subfigure[density at 20
-ms]{\resizebox*{!}{10cm}{\includegraphics{rho20ms.eps}}} \par}
+% {\centering \subfigure[density at 15
+% ms]{\resizebox*{!}{10cm}{\includegraphics{rho15ms.eps}}}
+% \subfigure[density at 20
+% ms]{\resizebox*{!}{10cm}{\includegraphics{rho20ms.eps}}} \par}
 
-\end{figure}
+% \end{figure}
 
-\begin{figure}
+% \begin{figure}
 
-\caption{Density plots (\protect\( kg/m^{3}\protect
-\))\label{working2}}
+% \caption{Density plots (\protect\( kg/m^{3}\protect
+% \))\label{working2}}
 
-{\centering \subfigure[density at 25
-ms]{\resizebox*{!}{10cm}{\includegraphics{rho25ms.eps}}}
-\subfigure[density at 50
-ms]{\resizebox*{!}{10cm}{\includegraphics{rho50ms.eps}}}
-\par}
-\end{figure}
-\par}
-\vspace{0.3cm}
+% {\centering \subfigure[density at 25
+% ms]{\resizebox*{!}{10cm}{\includegraphics{rho25ms.eps}}}
+% \subfigure[density at 50
+% ms]{\resizebox*{!}{10cm}{\includegraphics{rho50ms.eps}}}
+% \par}
+% \end{figure}
+% \par}
+% \vspace{0.3cm}
 
 \section{Conclusion}
 In this paper we have first recalled basic facts on compressible
@@ -1632,6 +1642,7 @@ p^{\star }\geq -p_{0} \) is the unique solution of\[
 u_{l}-X_{l}(p^{\star })=u_{r}+X_{r}(p^{\star }).\]
 
 \end{thm}
+
 This result is quite similar to the case of the Riemann problem
 for a single fluid. For the proof we refer (for example) to
 \cite{godunov79}, \cite{raviart96}.
@@ -1648,7 +1659,9 @@ the Riemann problem has still an entropy solution. For example, if
 \( u_{I}=u_{l}-X_{l}(p^{\star }) \), and, in general \( u_{I}\neq
 u_{II} \).
 \end{thm}
+
 \begin{proof}
+
 Suppose that \( p_{0}=\min (\pi _{l},\pi _{r})=\pi _{l} \). In the
 two open sets \( x<u^{\star }t \) and \( x>u^{\star }t \), the
 computation of the 1- and 3-wave curves is identical to the
@@ -1674,6 +1687,7 @@ Finally, the entropy inequality (which degenerates to an equality)
 is also satisfied: \( \rho _{I}v_{I}s_{I}=0=\rho _{II}v_{II}s_{II}
 \).
 \end{proof}
+%trsltx-end-ignore
 \bibliographystyle{plain}
 \bibliography{axigen}
 \end{document}
