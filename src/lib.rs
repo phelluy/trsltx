@@ -338,7 +338,7 @@ pub fn get_lang_name(lang: &str) -> Result<String, String> {
 
     let lang = lang_dict.get(lang).ok_or(
         "The supported languages are: en,fr,es,de,it,pt,ru. Unsupported language: ".to_owned()
-            + &lang,
+            + lang,
     )?;
     Ok(lang.to_string())
 }

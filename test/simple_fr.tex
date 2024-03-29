@@ -13,6 +13,7 @@
 %\newcommand{\oper}[1]{\sqrt{#1}}
 \makeatother
 \begin{document}
+
 \title{Exemple de petit fichier \LaTeX}
 \author{Philippe Helluy}
 \maketitle
@@ -20,12 +21,11 @@
 Ceci est un exemple minimal de fichier \LaTeX{} en français pour tester
 \texttt{trsltx}.
 \end{abstract}
-
 \section{Objectifs}
-
 L'objectif du projet trsltx est de réaliser un outil pour traduire
 des documents \LaTeX{} d'une langue à une autre en conservant la syntaxe.
 %trsltx-split
+
 \begin{itemize}
 \item Le document peut contenir des formules en ligne comme $x=\sqrt{3}$
 ou 
@@ -43,21 +43,21 @@ ou
 \end{itemize}
 Il faut pouvoir aussi faire des références aux étiquettes existante
 comme (\ref{eq_fraction}) ou \cite{tutu}  sans casser les dépendances.
-
 \section{Conclusion}
-
 %trsltx-begin-ignore
+
 Cette phrase n'est
  pas traduite.
 %trsltx-end-ignore
 
 L'objectif est-il rempli ? Si ce document compile et semble écrit
 en anglais, peut-être !
-
 %trsltx-begin-ignore
+
 \begin{thebibliography}{1}
 \bibitem{tutu}Un auteur, \emph{Un titre}, une revue, 2021.
 \end{thebibliography}
 %trsltx-end-ignore
+
 
 \end{document}

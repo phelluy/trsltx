@@ -2,13 +2,13 @@
 //Tools for automatic translation of texts written with LaTeX.use clap::Parser;
 //The Rust doc is in the `src/lib.rs` file.
 
-use std::path;
+//use std::path;
 
 use clap::Parser;
 
 #[derive(Parser, Debug)]
 struct Cli {
-    #[clap(short, long, default_value = "test/autosplit.tex")]
+    #[clap(short, long, default_value = "test/simple.tex")]
     file_init: String,
     #[clap(short, long, default_value = "fr")]
     input_lang: String,
@@ -74,7 +74,7 @@ fn main() -> Result<(), String> {
     if !path_to_file.exists() {
         // read init_file
         println!("Reading input file {}", input_file_name);
-        let s = std::fs::read_to_string(init_file_name).map_err(|e| e.to_string())?;
+        //let s = std::fs::read_to_string(init_file_name).map_err(|e| e.to_string())?;
 
         let mut trsltx = Trsltx::new(input_lang, output_lang, init_file_name, "");
         trsltx.read_file()?;
