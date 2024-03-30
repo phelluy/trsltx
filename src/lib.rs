@@ -1,70 +1,70 @@
 //! # trsltx
 //! Tools for automatic translation of texts written with LaTeX.
-//! 
+//!
 //! You need first to get a valid API key from [https://textsynth.com/](https://textsynth.com/)
 //! and put it in a file named `api_key.txt` in the working directory or in an environment variable by
-//! 
+//!
 //! ```bash
 //! export TEXTSYNTH_API_KEY=<the_api_key>
 //! ```
-//! 
+//!
 //! Usage: go in the `trsltx` directory and run
-//! 
+//!
 //! ```bash
 //! cargo run
 //! ```
-//! 
+//!
 //! By default, the French LaTeX file `test/simple.tex` is translated into English in `test/simple_en.tex`.
-//! 
+//!
 //! The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language //! name.
-//! Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`. 
-//! 
+//! Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`.
+//!
 //! For changing the default behavior do, for instance
-//! 
+//!
 //! ```bash
 //! cargo run -- -i fr -o de -f test/simple.tex
 //! ```
-//! 
+//!
 //! Or
-//! 
+//!
 //! ```bash
 //! cargo install --path .
 //! trsltx --help
 //! trsltx -i fr -o de -f test/simple.tex
 //! ```
-//! 
+//!
 //! The translation is completed using a Large Language Model (LLM) available on the Texsynth server. It may //! contain some LaTeX errors.
 //! Therefore, it is essential to review and manually correct the translated code as necessary.
-//! 
-//! `trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal BNF //! grammar to constraint the generated output. 
+//!
+//! `trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal BNF //! grammar to constraint the generated output.
 //! See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar).
-//! 
+//!
 //! The original LaTeX file has to be split in not too long chunks by using markers
 //! `%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
 //! is too long. It is possible to specify a split length with the `-l` option of `trsltx`.
 //!  In the process an intermediate file `test/simple_fr.tex` is generated with split markers.
 //! The automatic split is not very powerful. It is recomended to adjust the position of the
 //! markers manually if the translation is not satisfactory.
-//! 
+//!
 //! Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax. A special grammar is //! generated for each fragment, which encourages the LLM to stick to the original text. This discourages //! invented labels, references or citations. In addition, LaTeX commands that are not in the original text //! are less likely to be generated.
-//! 
+//!
 //! The grammar feature is deactivated if the light parser fails. The chunk is partially translated if the //! server returns an error.
-//! 
+//!
 //! It is also possible to mark a region that should not be translated with the markers
 //! `%trsltx-begin-ignore` and `%trsltx-end-ignore` on single lines. Ignored regions should not contain
 //! `%trsltx-split` markers. See the file `test/simple.tex` for an example.
-//! 
+//!
 //! Here are a few tips for improved results:
-//! 
+//!
 //! * Your initial .tex file must compile without any error, of course. Be careful the LaTeX compiler //! sometimes ignores unpaired braces `{...}`, which `trsltx` will not accept.
 //! * You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`;
 //! * Give meaningful names to your macros for helping the translator (e.g. don't call a macro that displays //! the energy `\foo`. A better choice is `\energy`!).
 //! * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, //! refs and citations may be lost in translation;
-//! * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` //! environments. 
-//! 
-//! 
-//! 
-//! 
+//! * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` //! environments.
+//!
+//!
+//!
+//!
 
 use std::io::Write;
 
@@ -430,7 +430,7 @@ fn chat_with_ts(question: &str) -> Result<String, String> {
 /// one completion operation with the textsynth LLM
 /// send the question and a formal grammar (as Some(String) or None)
 /// and returns an answer
-fn complete_with_ts(prompt: &str, grammar: Option<String>) -> Result<String, String> {
+fn complete_with_ts(prompt: &str, grammar: &Option<String>) -> Result<String, String> {
     // get the api key from the file "api_key.txt"
     //or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
@@ -504,6 +504,7 @@ Keep the LateX syntax and formulas. The results must compile without errors with
 Give only the result without preliminaries. 
 Enclose the resulting LateX source between \begin{trsltx} and \end{trsltx}
 Here is the <lang_in> LateX source:
+
 "#;
 
 /// translate a latex chunk using the textsynth LLM api
@@ -532,7 +533,6 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     prompt = prompt.replace("<lang_out>", output_lang.as_str());
 
     let question = format!("{}\n{}\nA:\n", prompt, chunk);
-    // println!("{:?}", question);
     // exit(0);
     //let trs_chunk = chat_with_ts(question.as_str());
     let ast_chunk = LtxNode::new(chunk);
@@ -544,25 +544,45 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     };
     //ast_chunk.print();
     println!("Grammar: {}", ast_chunk.to_ebnf());
-    let trs_try = complete_with_ts(question.as_str(), grammar);
-    //let trs_try = complete_with_ts(&question.as_str(), None);
+    let mut distmin = std::usize::MAX;
+    let mut iter = 0;
+    let mut trs_chunk = "".to_string();
+    // at most four attempts to get a translation
+    while distmin > 0 && iter < 4 {
+        // last 2 iters are without grammar
+        let trs_try = if iter > 1 {
+            complete_with_ts(question.as_str(), &grammar)
+        } else {
+            complete_with_ts(question.as_str(), &grammar)
+        };
+        let trs_try = match trs_try {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+        let trs_try = trs_try.split("\\begin{trsltx}").collect::<Vec<&str>>();
+        let trs_try = if trs_try.len() >= 2 {
+            let trs_try = trs_try[1].split("\\end{trsltx}").collect::<Vec<&str>>()[0];
+            trs_try.to_string()
+        } else {
+            "".to_string()
+        };
+        let trs_ltxnode = LtxNode::new(trs_try.as_str());
+        let dist = ast_chunk.distance(&trs_ltxnode);
+        if dist < distmin {
+            distmin = dist;
+            trs_chunk = trs_try;
+        }
+        if distmin > 0 {
+            // prepend a warning to the translation
+            let warn = format!("%Warning chunk, distance: {}", distmin);
+            trs_chunk = warn + trs_chunk.as_str();
+            let endwarn = format!("%---------------------------------");
+            trs_chunk = trs_chunk + endwarn.as_str();
+        }
+        iter += 1;
+    }
 
-    // remove the text before \begin{trsltx} and after \end{trsltx}
-    // if they exist, do nothing if they do not exist
-    let trs_chunk = match trs_try {
-        Ok(trs_chunk) => trs_chunk,
-        Err(e) => return Err(e),
-    };
-    let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>();
-    Ok(if trs_chunk.len() >= 2 {
-        let trs_chunk = trs_chunk[1].split("\\end{trsltx}").collect::<Vec<&str>>()[0];
-        trs_chunk.to_string()
-    } else {
-        "".to_string()
-    })
-    // let trs_chunk = trs_chunk.split("\\begin{trsltx}").collect::<Vec<&str>>()[1];
-    // let trs_chunk = trs_chunk.split("\\end{trsltx}").collect::<Vec<&str>>()[0];
-    // trs_chunk.to_string()
+    Ok(trs_chunk)
 }
 
 // test the chat_with_ts function
@@ -583,7 +603,7 @@ mod tests {
         let grammar = r#"root   ::= "yes" | "no""#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
-        let answer = complete_with_ts(question, Some(grammar)).unwrap();
+        let answer = complete_with_ts(question, &Some(grammar)).unwrap();
         //let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
         assert!(answer.contains("No") || answer.contains("no"));
@@ -601,7 +621,7 @@ Answer:
         let grammar = r#"root   ::= [A-Z][a-z]*"#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
-        let answer = complete_with_ts(question, Some(grammar));
+        let answer = complete_with_ts(question, &Some(grammar));
         // let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
     }
@@ -613,7 +633,7 @@ Answer:
             std::fs::read_to_string("test/trs_sample_gram.txt").expect("cannot read prompt");
         // grammar in "src/sample.ebnf"
         let grammar = std::fs::read_to_string("src/sample.ebnf").expect("cannot read grammar");
-        let str = complete_with_ts(&prompt, None).unwrap();
+        let str = complete_with_ts(&prompt, &None).unwrap();
         // print str in the terminal with true newlines
         println!("No grammar -------------------------------------------");
         let parts = str.split("\\n");
@@ -621,7 +641,7 @@ Answer:
             println!("{}", part);
         }
 
-        let str = complete_with_ts(&prompt, Some(grammar)).unwrap();
+        let str = complete_with_ts(&prompt, &Some(grammar)).unwrap();
         // print str in the terminal with true newlines
         println!("With grammar -------------------------------------------");
         let parts = str.split("\\n");

@@ -84,10 +84,10 @@ pressures, we have also to take into account the compressibility
 effects in water. In such applications, it is classical to observe
 \textsl{cavitation} zones in the liquid phase. Cavitation is a
 phenomenon that appears in a region of the flow where the pressure
-drops below the saturation pressure of water. In a first and very
-short stage, the liquid stays in a metastable state.
+drops below the saturation pressure of water. 
 %trsltx-split
- It can also
+In a first and very
+short stage, the liquid stays in a metastable state. It can also
 happen in this stage that the pressure becomes negative (it is
 then called a tension). In a second stage, a phase transition
 (vaporization) occurs. Thus the original two-phase flow, made of
@@ -329,7 +329,6 @@ prove a Lax-Wendroff convergence result for the Saurel-Abgrall
 \end{itemize}
 %trsltx-end-ignore
 
-
 \section{A two-fluids model for air-water flows}
 \subsection{Basic equations}
 We are interested in the flow of a compressible continuous medium
@@ -438,10 +437,9 @@ physically correct? Indeed, negative pressures can locally and
 briefly appear in a liquid, they should then be called
 \textsl{tensions}. But in the zone of negative pressures the
 liquid is in a metastable state and is subject to vaporization.
-
+This phenomenon is called \textsl{cavitation}.
 %trsltx-split
-
-This phenomenon is called \textsl{cavitation}. For a physical
+For a physical
 description of the cavitation, we refer to the book of Franc $\&$
 \textit{al} \cite{franc95}. We have proposed recently a simple
 adaptation of the stiffened gas model to take into account
@@ -525,10 +523,10 @@ pressure oscillations phenomenon in the conservative Godunov
 schemes. It appears that for very simple one-dimensional test
 cases, the classical first order conservative Godunov scheme gives
 very bad results on every conservative form of the equations as
-(\ref{slc}) or (\ref{abgralcons}). We first exhibit one of these
-test
-cases which is a simple Riemann problem.\\
+(\ref{slc}) or (\ref{abgralcons}).
 %trsltx-split
+We first exhibit one of these test
+cases which is a simple Riemann problem.\\
 Then, we present two fixes which permit to avoid the pressure
 oscillations at the interface:
 \begin{itemize}
