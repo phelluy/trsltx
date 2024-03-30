@@ -390,7 +390,7 @@ fn chat_with_ts(question: &str) -> Result<String, String> {
     let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/chat";
     // also works well with the engine mistral_7B_instruct
     //let url = "https://api.textsynth.com/v1/engines/mistral_7B_instruct/chat";
-    let max_tokens = 1000;
+    let max_tokens = 2000;
 
     use serde_json::json;
     use serde_json::Value;

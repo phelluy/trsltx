@@ -17,3 +17,6 @@ Cargo.lock
 # Added by cargo
 
 /target
+
+# avoid sending the api key to the world
+*api_key*
