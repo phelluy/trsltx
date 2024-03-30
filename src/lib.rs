@@ -444,7 +444,7 @@ fn complete_with_ts(prompt: &str, grammar: &Option<String>) -> Result<String, St
     let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/completions";
     //let url = "https://api.textsynth.com/v1/engines/llama2_70B/completions";
 
-    let max_tokens = 1000;
+    let max_tokens = 2000;
 
     use serde_json::json;
     use serde_json::Value;
@@ -548,7 +548,7 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     let mut iter = 0;
     let mut trs_chunk = "".to_string();
     // at most four attempts to get a translation
-    while distmin > 0 && iter < 4 {
+    while distmin > 1 && iter < 4 {
         // last 2 iters are without grammar
         let trs_try = if iter > 1 {
             complete_with_ts(question.as_str(), &grammar)
@@ -568,17 +568,19 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
         };
         let trs_ltxnode = LtxNode::new(trs_try.as_str());
         let dist = ast_chunk.distance(&trs_ltxnode);
+        println!("Syntax distance: {}", dist);
+        println!("Bnf grammar: {}", trs_ltxnode.to_ebnf());
         if dist < distmin {
             distmin = dist;
             trs_chunk = trs_try;
         }
-        if distmin > 0 {
-            // prepend a warning to the translation
-            let warn = format!("%Warning chunk, distance: {}", distmin);
-            trs_chunk = warn + trs_chunk.as_str();
-            let endwarn = format!("%---------------------------------");
-            trs_chunk = trs_chunk + endwarn.as_str();
-        }
+        // if distmin > 0 {
+        //     // prepend a warning to the translation
+        //     let warn = format!("%Warning chunk, distance: {}", distmin);
+        //     trs_chunk = warn + trs_chunk.as_str();
+        //     let endwarn = format!("%---------------------------------");
+        //     trs_chunk = trs_chunk + endwarn.as_str();
+        // }
         iter += 1;
     }
 
