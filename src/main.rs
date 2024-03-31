@@ -72,8 +72,10 @@ fn main() -> Result<(), String> {
     println!("{},path_to_file={:?}", input_file_name, path_to_file);
     //assert!(1==2);
     if !path_to_file.exists() {
+        println!("File {} does not exist", input_file_name);
+        println!("Creating file {}", input_file_name);
         // read init_file
-        println!("Reading input file {}", input_file_name);
+        //println!("Reading input file {}", input_file_name);
         //let s = std::fs::read_to_string(init_file_name).map_err(|e| e.to_string())?;
 
         let mut trsltx = Trsltx::new(input_lang, output_lang, init_file_name, "");
@@ -84,6 +86,8 @@ fn main() -> Result<(), String> {
         // save to input_file
         println!("Writing input file {}", input_file_name);
         std::fs::write(&input_file_name, s).map_err(|e| e.to_string())?;
+        println!("File {} created. Please review it: check that the split regions are well positioned, check latex compilation. Then relaunch trsltx.", input_file_name);
+        return Ok(());
     }
     let mut trsltx = Trsltx::new(
         input_lang,

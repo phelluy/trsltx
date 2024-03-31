@@ -539,7 +539,7 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     //let cmds = ast_chunk.extracts_commands();
     //println!("{:?}", ast_chunk);
     let grammar = match ast_chunk {
-        LtxNode::None => None,
+        LtxNode::Problem(_) => None,
         _ => Some(ast_chunk.to_ebnf().trim().to_string()),
     };
     //ast_chunk.print();
