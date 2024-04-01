@@ -191,19 +191,20 @@ impl Trsltx {
             "%trsltx-split\n%trsltx-begin-ignore",
         );
         // add %trsltx-split after each %trsltx-end-ignore
-        let toscan = toscan.replace("%trsltx-end-ignore", "%trsltx-end-ignore\n%trsltx-split");
+        let toscan = toscan.replace("%trsltx-end-ignore", "%trsltx-end-ignore\n%trsltx-split\n");
         // split the body into chunks
         let chunks = toscan.split("%trsltx-split\n");
         for chunk in chunks {
-            if chunk.contains("%trsltx-begin-ignore") {
-                if !chunk.contains("%trsltx-end-ignore") {
+            let cchunk = chunk.trim().replace("%trsltx-split\n", "");
+            if cchunk.contains("%trsltx-begin-ignore") {
+                if !cchunk.contains("%trsltx-end-ignore") {
                     return Err("Unbalanced %trsltx-begin-ignore".to_string());
                 }
-                self.chunks.push((chunk.to_string(), ChunkType::Unchanged));
-            } else if chunk.contains("%trsltx-end-ignore") {
+                self.chunks.push((cchunk.to_string(), ChunkType::Unchanged));
+            } else if cchunk.contains("%trsltx-end-ignore") {
                 return Err("Unbalanced %trsltx-end-ignore".to_string());
             } else {
-                self.chunks.push((chunk.to_string(), ChunkType::Translate));
+                self.chunks.push((cchunk.to_string(), ChunkType::Translate));
             }
         }
 
@@ -263,7 +264,7 @@ impl Trsltx {
                             // so that the translated file
                             // can be reused by trsltx
                             if count > 1 {
-                                body_translated.push_str("%trsltx-split\n");
+                                body_translated.push_str("\n%trsltx-split\n");
                             }
                             body_translated.push_str(trs_chunk.as_str());
                         }
