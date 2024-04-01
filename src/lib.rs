@@ -16,7 +16,8 @@
 //!
 //! By default, the French LaTeX file `test/simple.tex` is translated into English in `test/simple_en.tex`.
 //!
-//! The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language //! name.
+//! The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language
+//!  name.
 //! Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`.
 //!
 //! For changing the default behavior do, for instance
@@ -33,10 +34,12 @@
 //! trsltx -i fr -o de -f test/simple.tex
 //! ```
 //!
-//! The translation is completed using a Large Language Model (LLM) available on the Texsynth server. It may //! contain some LaTeX errors.
+//! The translation is completed using a Large Language Model (LLM) available on the Texsynth server.
+//! It may contain some LaTeX errors.
 //! Therefore, it is essential to review and manually correct the translated code as necessary.
 //!
-//! `trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal BNF //! grammar to constraint the generated output.
+//! `trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal
+//!  BNF grammar to constraint the generated output.
 //! See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar).
 //!
 //! The original LaTeX file has to be split in not too long chunks by using markers
@@ -46,9 +49,13 @@
 //! The automatic split is not very powerful. It is recomended to adjust the position of the
 //! markers manually if the translation is not satisfactory.
 //!
-//! Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax. A special grammar is //! generated for each fragment, which encourages the LLM to stick to the original text. This discourages //! invented labels, references or citations. In addition, LaTeX commands that are not in the original text //! are less likely to be generated.
+//! Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax.
+//! A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. 
+//! This discourages invented labels, references or citations.
+//! In addition, LaTeX commands that are not in the original text are less likely to be generated.
 //!
-//! The grammar feature is deactivated if the light parser fails. The chunk is partially translated if the //! server returns an error.
+//! The grammar feature is deactivated if the light parser fails.
+//! The chunk is partially translated if the server returns an error.
 //!
 //! It is also possible to mark a region that should not be translated with the markers
 //! `%trsltx-begin-ignore` and `%trsltx-end-ignore` on single lines. Ignored regions should not contain
@@ -56,15 +63,16 @@
 //!
 //! Here are a few tips for improved results:
 //!
-//! * Your initial .tex file must compile without any error, of course. Be careful the LaTeX compiler //! sometimes ignores unpaired braces `{...}`, which `trsltx` will not accept.
-//! * You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`;
-//! * Give meaningful names to your macros for helping the translator (e.g. don't call a macro that displays //! the energy `\foo`. A better choice is `\energy`!).
-//! * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, //! refs and citations may be lost in translation;
-//! * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` //! environments.
-//!
-//!
-//!
-//!
+//! * Your initial .tex file must compile without any error, of course.
+//! Be careful, the LaTeX compiler sometimes ignores unpaired braces `{...}`, which `trsltx` will not accept.
+//! * You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`.
+//! * Give meaningful names to your macros for helping the translator 
+//! (e.g. don't call a macro that displays the energy `\foo`. A better choice is `\energy`!).
+//! * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`.
+//! Otherwise, the labels, refs and citations may be lost in translation.
+//! * Avoid using `%trsltx-split` in the middle of math formulas,
+//!  `{...}` groups or `\begin ... \end` environments.
+
 
 use std::io::Write;
 
@@ -548,11 +556,12 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     let mut distmin = std::usize::MAX;
     let mut iter = 0;
     let mut trs_chunk = "".to_string();
+    let itermax = 4;
     // at most four attempts to get a translation
-    while distmin > 1 && iter < 4 {
-        // last 2 iters are without grammar
-        let trs_try = if iter > 1 {
-            complete_with_ts(question.as_str(), &grammar)
+    while distmin > 1 && iter < itermax {
+        // last iter without grammar
+        let trs_try = if iter > itermax - 2 {
+            complete_with_ts(question.as_str(), &None)
         } else {
             complete_with_ts(question.as_str(), &grammar)
         };
