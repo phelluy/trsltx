@@ -8,7 +8,7 @@ and put it in a file named `api_key.txt` in the working directory or in an envir
 export TEXTSYNTH_API_KEY=<the_api_key>
 ```
 
-Usage: go in the `trsltx` directory and run
+Usage: go in the `trsltx` directory and run (you need a working install of [Rust](https://www.rust-lang.org/tools/install))
 
 ```bash
 cargo run
