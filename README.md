@@ -46,7 +46,7 @@ In the process an intermediate file `test/simple_fr.tex` is generated with split
 For now, the automatic split is not very powerful. It is recomended to adjust the position of the
 markers manually if the translation is not satisfactory.
 
-Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax. A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
+Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax (see [ltxprs](https://github.com/phelluy/ltxprs)). A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
 
 The grammar function is deactivated if the light syntax analyser fails. The chunk is partially translated if the server returns an error. In this case, the translation must be corrected manually...
 
