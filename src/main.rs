@@ -57,8 +57,8 @@ fn main() -> Result<(), String> {
     let input_file: Vec<&str> = input_file.split('_').collect();
     let output_file: Vec<&str> = output_file.split('_').collect();
 
-    assert!(input_file.len() == 2);
-    assert!(output_file.len() == 2);
+    assert!(input_file.len() == 2, "Don't use \"_\" in the file name, please rename it.");
+    assert!(output_file.len() == 2, "Don't use \"_\" in the file name, please rename it.");
 
     let input_lang = input_file[1];
     let output_lang = output_file[1];
