@@ -1,0 +1,17 @@
+# W3C EBNF grammar to (partially) parse LaTeX
+
+root ::= "\\begin{trsltx}" stuff "\\end{trsltx}"
+
+stuff ::= (atom | construct)*
+
+atom ::= command | text
+
+construct ::= group
+
+text ::= [^\\{}$%]+
+
+group ::= "{" stuff "}"
+
+command ::= "\\item"  | "\\begin" | "\\frac" | "\\label{eq:formule}" | "\\end" | "\\ref{eq:autre_formule}" | "\\section" | "\\sqrt"
+
+
