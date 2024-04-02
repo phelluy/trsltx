@@ -25,7 +25,7 @@ For changing the default behavior do, for instance
 cargo run -- -i fr -o de -f test/simple.tex
 ```
 
-Or
+Or, for installing `trsltx` in your user account
 
 ```bash
 cargo install --path .
