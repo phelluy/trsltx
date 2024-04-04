@@ -64,7 +64,7 @@ Here are a few tips for improved results:
 * Give meaningful names to your macros for helping the translator (e.g. don't call a macro that displays the energy `\foo`. A better choice is `\energy`!).
 * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, refs and citations may be lost in translation.
 * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` environments. 
-* The parser `ltxprs`does not accept special characters (like `$` or `%`) in file names or url strings. It will fail even if the line is commented. A workaround is to define an alias without special character in the preamble.
-
+* The parser has other limitations (such has `\verbatim` envs). See [ltxprs](https://github.com/phelluy/ltxprs) for limitations and possible workarounds.
+ 
 
 
