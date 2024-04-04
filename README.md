@@ -33,6 +33,8 @@ trsltx --help
 trsltx -i fr -o de -f test/simple.tex
 ```
 
+`cargo install`is the recommend method: it takes into accound bug fixes both in the parser `ltxprs`and in the translator `trsltx`.
+
 The translation is completed using a Large Language Model (LLM) available on the Texsynth server. It may contain some LaTeX errors.
 Therefore, it is essential to review and manually correct the translated code as necessary.
 
@@ -57,10 +59,12 @@ It is also possible to mark a region that should not be translated with the mark
 Here are a few tips for improved results:
 
 * Your initial .tex file must compile without any error, of course. Be careful, the LaTeX compiler sometimes ignores unpaired braces `{...}`, which `trsltx` will not accept.
+* If a part of your initial .tex file is not recognized by the parser, comment it, remove the temporary file and restart `trsltx`.
 * You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`.
 * Give meaningful names to your macros for helping the translator (e.g. don't call a macro that displays the energy `\foo`. A better choice is `\energy`!).
 * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, refs and citations may be lost in translation.
 * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` environments. 
+* The parser `ltxprs`does not accept special characters (like `$` or `%`) in file names or url strings. It will fail even if the line is commented. A workaround is to define an alias without special character in the preamble.
 
 
 
