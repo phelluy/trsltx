@@ -16,6 +16,8 @@ struct Cli {
     output_lang: String,
     #[clap(short, long, default_value = "1000")]
     length_split: usize,
+    #[clap(short, long, default_value = "mistral47b")]
+    model: String,
 }
 
 use trsltx::Trsltx;
@@ -78,7 +80,7 @@ fn main() -> Result<(), String> {
         //println!("Reading input file {}", input_file_name);
         //let s = std::fs::read_to_string(init_file_name).map_err(|e| e.to_string())?;
 
-        let mut trsltx = Trsltx::new(input_lang, output_lang, init_file_name, "");
+        let mut trsltx = Trsltx::new(input_lang, output_lang, init_file_name, "", args.model.as_str());
         trsltx.read_file()?;
         println!("{:?}", trsltx);
         let s = trsltx.generate_split_latex(args.length_split);
@@ -94,6 +96,7 @@ fn main() -> Result<(), String> {
         output_lang,
         input_file_name.as_str(),
         output_file_name.as_str(),
+        args.model.as_str(),
     );
 
     trsltx.read_file()?;

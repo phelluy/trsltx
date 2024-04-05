@@ -50,7 +50,7 @@
 //! markers manually if the translation is not satisfactory.
 //!
 //! Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax.
-//! A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. 
+//! A special grammar is generated for each fragment, which encourages the LLM to stick to the original text.
 //! This discourages invented labels, references or citations.
 //! In addition, LaTeX commands that are not in the original text are less likely to be generated.
 //!
@@ -66,13 +66,12 @@
 //! * Your initial .tex file must compile without any error, of course.
 //! Be careful, the LaTeX compiler sometimes ignores unpaired braces `{...}`, which `trsltx` will not accept.
 //! * You can define fancy LaTeX macros, but only in the preamble, before `\begin{document}`.
-//! * Give meaningful names to your macros for helping the translator 
+//! * Give meaningful names to your macros for helping the translator
 //! (e.g. don't call a macro that displays the energy `\foo`. A better choice is `\energy`!).
 //! * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`.
 //! Otherwise, the labels, refs and citations may be lost in translation.
 //! * Avoid using `%trsltx-split` in the middle of math formulas,
 //!  `{...}` groups or `\begin ... \end` environments.
-
 
 use std::io::Write;
 
@@ -90,6 +89,7 @@ pub struct Trsltx {
     output_lang: String,
     input_file_name: String,
     output_file_name: String,
+    model_name: String,
     preamble: String,
     body: String,
     afterword: String,
@@ -103,12 +103,14 @@ impl Trsltx {
         output_lang: &str,
         input_file_name: &str,
         output_file_name: &str,
+        model_name: &str,
     ) -> Trsltx {
         Trsltx {
             input_lang: input_lang.to_string(),
             output_lang: output_lang.to_string(),
             input_file_name: input_file_name.to_string(),
             output_file_name: output_file_name.to_string(),
+            model_name: model_name.to_string(),
             preamble: String::new(),
             body: String::new(),
             afterword: String::new(),
@@ -264,6 +266,7 @@ impl Trsltx {
                             chunk.as_str(),
                             self.input_lang.as_str(),
                             self.output_lang.as_str(),
+                            self.model_name.clone(),
                         )
                     };
                     match trs_try {
@@ -396,9 +399,9 @@ fn chat_with_ts(question: &str) -> Result<String, String> {
     };
 
     // call the textsynth REST API
-    let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/chat";
+    //let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/chat";
     // also works well with the engine mistral_7B_instruct
-    //let url = "https://api.textsynth.com/v1/engines/mistral_7B_instruct/chat";
+    let url = "https://api.textsynth.com/v1/engines/mistral_7B_instruct/chat";
     let max_tokens = 2000;
 
     use serde_json::json;
@@ -439,7 +442,11 @@ fn chat_with_ts(question: &str) -> Result<String, String> {
 /// one completion operation with the textsynth LLM
 /// send the question and a formal grammar (as Some(String) or None)
 /// and returns an answer
-fn complete_with_ts(prompt: &str, grammar: &Option<String>) -> Result<String, String> {
+fn complete_with_ts(
+    prompt: &str,
+    grammar: &Option<String>,
+    model: String,
+) -> Result<String, String> {
     // get the api key from the file "api_key.txt"
     //or if the file does not exist, from the environment variable "TEXTSYNTH_API_KEY"
     let api_key = match std::fs::read_to_string("api_key.txt") {
@@ -450,8 +457,10 @@ fn complete_with_ts(prompt: &str, grammar: &Option<String>) -> Result<String, St
     };
 
     // call the textsynth REST API
-    let url = "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/completions";
-    //let url = "https://api.textsynth.com/v1/engines/llama2_70B/completions";
+    let url = match model.as_str() {
+        "mistral47b" => "https://api.textsynth.com/v1/engines/mixtral_47B_instruct/completions",
+        _ => "https://api.textsynth.com/v1/engines/mistral_7B_instruct/completions",
+    };
 
     let max_tokens = 2000;
 
@@ -477,7 +486,7 @@ fn complete_with_ts(prompt: &str, grammar: &Option<String>) -> Result<String, St
         }
     };
     //println!("Req= {:?}", req);
-
+    println!("Translate with {}", model);
     let client = reqwest::blocking::Client::new();
     let res = client
         .post(url)
@@ -520,7 +529,7 @@ Here is the <lang_in> LateX source:
 /// the preprompt is in the file "prompt.txt"
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
-fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Result<String, String> {
+fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str, model: String) -> Result<String, String> {
     println!("Translating chunk: {:?}", chunk);
     if chunk.trim() == r#"\commandevide"# || chunk.trim() == "" {
         println!("Empty chunk");
@@ -561,9 +570,9 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str) -> Resu
     while distmin > 1 && iter < itermax {
         // last iter without grammar
         let trs_try = if iter > itermax - 2 {
-            complete_with_ts(question.as_str(), &None)
+            complete_with_ts(question.as_str(), &None, model.clone())
         } else {
-            complete_with_ts(question.as_str(), &grammar)
+            complete_with_ts(question.as_str(), &grammar, model.clone())
         };
         let trs_try = match trs_try {
             Ok(s) => s,
@@ -615,7 +624,7 @@ mod tests {
         let grammar = r#"root   ::= "yes" | "no""#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
-        let answer = complete_with_ts(question, &Some(grammar)).unwrap();
+        let answer = complete_with_ts(question, &Some(grammar), "mistral47b".to_string()).unwrap();
         //let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
         assert!(answer.contains("No") || answer.contains("no"));
@@ -633,7 +642,7 @@ Answer:
         let grammar = r#"root   ::= [A-Z][a-z]*"#;
         let grammar = grammar.to_string();
         println!("{:?}", grammar);
-        let answer = complete_with_ts(question, &Some(grammar));
+        let answer = complete_with_ts(question, &Some(grammar),"mistral47b".to_string()).unwrap();
         // let answer = complete_with_ts(question, None);
         println!("{:?}", answer);
     }
@@ -645,7 +654,7 @@ Answer:
             std::fs::read_to_string("test/trs_sample_gram.txt").expect("cannot read prompt");
         // grammar in "src/sample.ebnf"
         let grammar = std::fs::read_to_string("src/sample.ebnf").expect("cannot read grammar");
-        let str = complete_with_ts(&prompt, &None).unwrap();
+        let str = complete_with_ts(&prompt, &None, "mistral47b".to_string()).unwrap();
         // print str in the terminal with true newlines
         println!("No grammar -------------------------------------------");
         let parts = str.split("\\n");
@@ -653,7 +662,7 @@ Answer:
             println!("{}", part);
         }
 
-        let str = complete_with_ts(&prompt, &Some(grammar)).unwrap();
+        let str = complete_with_ts(&prompt, &Some(grammar), "mistral47b".to_string()).unwrap();
         // print str in the terminal with true newlines
         println!("With grammar -------------------------------------------");
         let parts = str.split("\\n");
