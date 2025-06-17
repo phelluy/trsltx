@@ -362,7 +362,7 @@ pub fn adjust_preamble_lang(
 /// Get the long language name from the short two-letter one
 pub fn get_lang_name(lang: &str) -> Result<String, String> {
     // list of known languages
-    const LANGUAGES: [(&str, &str); 7] = [
+    const LANGUAGES: [(&str, &str); 8] = [
         ("en", "English"),
         ("fr", "French"),
         ("es", "Spanish"),
@@ -370,6 +370,7 @@ pub fn get_lang_name(lang: &str) -> Result<String, String> {
         ("it", "Italian"),
         ("pt", "Portuguese"),
         ("ru", "Russian"),
+        ("nl", "Dutch"),
     ];
 
     // build a dictionnary from the list of languages
@@ -379,7 +380,7 @@ pub fn get_lang_name(lang: &str) -> Result<String, String> {
     }
 
     let lang = lang_dict.get(lang).ok_or(
-        "The supported languages are: en,fr,es,de,it,pt,ru. Unsupported language: ".to_owned()
+        "The supported languages are: en,fr,es,de,it,pt,ru,nl. Unsupported language: ".to_owned()
             + lang,
     )?;
     Ok(lang.to_string())

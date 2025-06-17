@@ -17,7 +17,7 @@ cargo run
 By default, the French LaTeX file `test/simple.tex` is translated into English in `test/simple_en.tex`.
 
 The languages are specified in the filename by the `_xy` mark, where `xy` is the abbreviated language name.
-Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`. 
+Currently, the available languages are: `en`, `fr`, `es`, `de`, `it`, `pt`, `ru`, `nl`.
 
 For changing the default behavior do, for instance
 
