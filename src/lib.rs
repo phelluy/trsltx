@@ -328,7 +328,7 @@ impl Trsltx {
         // \begin{trsltx} and \end{trsltx}
         output_file
             .write_all(
-                "\\newenvironment{trsltx}{}{}\n\n\\newcommand{\\commandevide}{}\n\\begin{document}"
+                "\\newenvironment{trsltx}{}{}\n\n\\providecommand{\\commandevide}{}\n\\begin{document}"
                     .as_bytes(),
             )
             .map_err(|e| format!("Cannot write to file: {:?}", e))?;

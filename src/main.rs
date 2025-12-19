@@ -22,6 +22,8 @@ struct Cli {
     backend: String,
     #[clap(short, long, default_value = "http://localhost:8080/completion")]
     url: String,
+    #[clap(short, long)]
+    auto: bool,
 }
 
 use trsltx::Backend;
@@ -107,8 +109,12 @@ fn main() -> Result<(), String> {
         // save to input_file
         println!("Writing input file {}", input_file_name);
         std::fs::write(&input_file_name, s).map_err(|e| e.to_string())?;
-        println!("File {} created. Please review it: check that the split regions are well positioned, check latex compilation. Then relaunch trsltx.", input_file_name);
-        return Ok(());
+        if args.auto {
+            println!("Auto mode: proceeding to translation...");
+        } else {
+            println!("File {} created. Please review it: check that the split regions are well positioned, check latex compilation. Then relaunch trsltx.", input_file_name);
+            return Ok(());
+        }
     }
     let mut trsltx = Trsltx::new(
         input_lang,

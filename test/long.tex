@@ -1,0 +1,93 @@
+%% LyX 2.3.7 created this file.  For more info, see http://www.lyx.org/.
+%% Do not edit unless you really know what you are doing.
+\documentclass[french]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+\makeatletter
+\addto\extrasfrench{%
+   \providecommand{\og}{\leavevmode\flqq~}%
+   \providecommand{\fg}{\ifdim\lastskip>\z@\unskip\fi~\frqq}%
+}
+
+%\newcommand{\oper}[1]{\sqrt{#1}}
+\makeatother
+\newcommand{\commandevide}{}
+\begin{document}
+
+\title{Exemple de fichier \LaTeX{} long et complexe}
+\author{Philippe Helluy}
+\maketitle
+\begin{abstract}
+Ceci est un exemple étendu de fichier \LaTeX{} pour tester la capacité de découpage automatique de trsltx.
+Il contient du texte, des mathématiques, des références et doit être suffisamment long.
+\end{abstract}
+
+\section{Introduction}
+L'objectif du projet trsltx est de réaliser un outil pour traduire
+des documents \LaTeX{} d'une langue à une autre en conservant la syntaxe.
+Nous allons ici tester si le logiciel est capable de gérer de longs passages sans marqueurs explicites.
+
+Pour cela, nous introduisons plusieurs concepts mathématiques.
+\begin{itemize}
+\item Le document peut contenir des formules en ligne comme $x=\sqrt{3}$ ou $e^{i\pi} + 1 = 0$.
+\item Il peut aussi contenir des formules hors ligne.
+\end{itemize}
+
+\section{Développements Mathématiques}
+
+Considérons l'équation de la chaleur en dimension 1 :
+\begin{equation}
+\frac{\partial u}{\partial t} - \alpha \frac{\partial^2 u}{\partial x^2} = 0 \label{eq_chaleur}
+\end{equation}
+où $u(x,t)$ est la température à la position $x$ et au temps $t$.
+
+Nous pouvons discrétiser cette équation avec un schéma aux différences finies.
+Soit $u_i^n \approx u(x_i, t_n)$. Une approximation explicite est donnée par :
+\begin{equation}
+\frac{u_i^{n+1} - u_i^n}{\Delta t} - \alpha \frac{u_{i+1}^n - 2u_i^n + u_{i-1}^n}{\Delta x^2} = 0
+\end{equation}
+
+Cela nous amène à étudier la stabilité du schéma. Comme vu dans l'équation (\ref{eq_chaleur}), le coefficient de diffusion $\alpha$ joue un rôle crucial.
+
+Ajoutons un peu de texte pour augmenter la longueur du fichier. La simulation numérique des équations aux dérivées partielles est un vaste sujet.
+Il existe de nombreuses méthodes : volumes finis, éléments finis, méthodes spectrales.
+Chacune a ses avantages et ses inconvénients en termes de précision et de coût de calcul.
+
+\section{Algèbre Linéaire}
+
+Les systèmes discrétisés conduisent souvent à des problèmes matriciels de la forme $Ax=b$.
+\begin{equation}
+\mathbf{A}=\left[\begin{array}{cc}
+1 & 2\\
+2 & 5
+\end{array}\right].\label{eq_matrice} 
+\end{equation}
+La matrice $\mathbf{A}$ dans (\ref{eq_matrice}) est symétrique définie positive.
+Son inverse peut être calculée analytiquement ou numériquement.
+
+\subsection{Détails supplémentaires}
+Pour tester la robustesse du découpage, ajoutons encore du contenu.
+Supposons que nous voulions calculer les valeurs propres de $\mathbf{A}$.
+Les valeurs propres $\lambda$ sont solutions de $\det(A - \lambda I) = 0$.
+Ici, le polynôme caractéristique est :
+\[
+(1-\lambda)(5-\lambda) - 4 = 0
+\]
+Soit $\lambda^2 - 6\lambda + 1 = 0$.
+Les solutions sont $\lambda = \frac{6 \pm \sqrt{36-4}}{2} = 3 \pm \sqrt{8}$.
+
+\section{Conclusion}
+Nous avons maintenant un texte suffisamment long, avec plusieurs sections, des équations mathématiques complexes et des références croisées.
+Le logiciel trsltx devrait être capable d'insérer automatiquement des points de coupure entre les sections ou les paragraphes si la longueur dépasse la limite fixée (par défaut 1000 caractères).
+
+Espérons que la traduction en anglais sera de bonne qualité et que la structure \LaTeX{} sera préservée !
+
+%trsltx-begin-ignore
+\begin{thebibliography}{1}
+\bibitem{tutu}Un auteur, \emph{Un titre}, une revue, 2021.
+\end{thebibliography}
+%trsltx-end-ignore
+
+\commandevide
+\end{document}

@@ -1,10 +1,11 @@
 # trsltx
 Tools for automatic translation of texts written with LaTeX.
 
-You need first to run a [llama.cpp](https://github.com/ggerganov/llama.cpp) server (which supports constrained inference with GBNF grammars):
+You need first to run a [llama.cpp](https://github.com/ggerganov/llama.cpp) server.
+See the [installation instructions](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#usage).
 
 ```bash
-./server -m <your_model.gguf> -c 4096 --host 0.0.0.0
+<path_to_llama_cpp_directory>/server -m <your_model.gguf> -c 32768
 ```
 
 `trsltx` will connect to `http://localhost:8080/completion` by default.
@@ -51,7 +52,7 @@ The translation is completed using a Large Language Model (LLM) available on a l
 Therefore, it is essential to review and manually correct the translated code as necessary.
 
 `trsltx` uses a unique feature of the TextSynth (and now `llama.cpp`) API, which allows the possibility to use a formal grammar to constraint the generated output. 
-See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar).
+See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar)  and the [grammar options of `llama.cpp`](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md) (GBNF grammars)
 
 The original LaTeX file is split in not too long chunks by using markers
 `%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
