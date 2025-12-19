@@ -18,8 +18,13 @@ struct Cli {
     length_split: usize,
     #[clap(short, long, default_value = "mistral47b")]
     model: String,
+    #[clap(short, long, default_value = "llamacpp")]
+    backend: String,
+    #[clap(short, long, default_value = "http://localhost:8080/completion")]
+    url: String,
 }
 
+use trsltx::Backend;
 use trsltx::Trsltx;
 
 // init_file: the tex file to be translated
@@ -80,7 +85,21 @@ fn main() -> Result<(), String> {
         //println!("Reading input file {}", input_file_name);
         //let s = std::fs::read_to_string(init_file_name).map_err(|e| e.to_string())?;
 
-        let mut trsltx = Trsltx::new(input_lang, output_lang, init_file_name, "", args.model.as_str());
+        let args_backend = match args.backend.as_str() {
+            "textsynth" => Backend::TextSynth,
+            "llamacpp" => Backend::LlamaCpp,
+            _ => panic!("Unknown backend: {}", args.backend),
+        };
+
+        let mut trsltx = Trsltx::new(
+            input_lang,
+            output_lang,
+            init_file_name,
+            "",
+            args.model.as_str(),
+            args_backend,
+            args.url.as_str(),
+        );
         trsltx.read_file()?;
         println!("{:?}", trsltx);
         let s = trsltx.generate_split_latex(args.length_split);
@@ -97,6 +116,12 @@ fn main() -> Result<(), String> {
         input_file_name.as_str(),
         output_file_name.as_str(),
         args.model.as_str(),
+        match args.backend.as_str() {
+            "textsynth" => Backend::TextSynth,
+            "llamacpp" => Backend::LlamaCpp,
+            _ => panic!("Unknown backend: {}", args.backend),
+        },
+        args.url.as_str(),
     );
 
     trsltx.read_file()?;

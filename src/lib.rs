@@ -83,6 +83,12 @@ enum ChunkType {
     Unchanged,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum Backend {
+    TextSynth,
+    LlamaCpp,
+}
+
 #[derive(Debug)]
 pub struct Trsltx {
     input_lang: String,
@@ -90,6 +96,8 @@ pub struct Trsltx {
     input_file_name: String,
     output_file_name: String,
     model_name: String,
+    backend: Backend,
+    api_url: String,
     preamble: String,
     body: String,
     afterword: String,
@@ -104,6 +112,8 @@ impl Trsltx {
         input_file_name: &str,
         output_file_name: &str,
         model_name: &str,
+        backend: Backend,
+        api_url: &str,
     ) -> Trsltx {
         Trsltx {
             input_lang: input_lang.to_string(),
@@ -111,6 +121,8 @@ impl Trsltx {
             input_file_name: input_file_name.to_string(),
             output_file_name: output_file_name.to_string(),
             model_name: model_name.to_string(),
+            backend,
+            api_url: api_url.to_string(),
             preamble: String::new(),
             body: String::new(),
             afterword: String::new(),
@@ -267,6 +279,8 @@ impl Trsltx {
                             self.input_lang.as_str(),
                             self.output_lang.as_str(),
                             self.model_name.clone(),
+                            &self.backend,
+                            self.api_url.as_str(),
                         )
                     };
                     match trs_try {
@@ -517,6 +531,63 @@ fn complete_with_ts(
     Ok(answer)
 }
 
+/// one completion operation with the llama.cpp server
+/// send the question and a formal grammar (as Some(String) or None)
+/// and returns an answer
+fn complete_with_llama(
+    prompt: &str,
+    grammar: &Option<String>,
+    api_url: &str,
+) -> Result<String, String> {
+    let max_tokens = 2000;
+
+    use serde_json::json;
+    use serde_json::Value;
+
+    let req = match grammar {
+        Some(gr) => {
+            json!({
+                "prompt": prompt,
+                "temperature": 0.5,
+                "n_predict": max_tokens,
+                "grammar": gr
+            })
+        }
+        None => {
+            json!({
+                "prompt": prompt,
+                "temperature": 0.5,
+                "n_predict": max_tokens
+            })
+        }
+    };
+    println!("Translate with llama.cpp at {}", api_url);
+    let client = reqwest::blocking::Client::new();
+    let res = client
+        .post(api_url)
+        .header("Content-Type", "application/json")
+        .json(&req)
+        .send()
+        .map_err(|e| format!("Failed to send request: {:?}", e))?
+        .json::<Value>();
+    // println!("{:?}", res);
+
+    let answer: String = match res {
+        Ok(resp) => {
+            let text = resp["content"]
+                .as_str()
+                .ok_or("The result of llama.cpp does not contain content")?;
+            text.to_string()
+        }
+        Err(e) => {
+            println!("Request error: {:?}", e);
+            "".to_string()
+        }
+    };
+
+    Ok(answer)
+}
+
 const PREPROMPT: &str = r#"
 Q: Translate the following <lang_in> scientific text, formatted with LateX, into <lang_out>.
 Keep the LateX syntax and formulas. The results must compile without errors with pdflatex.
@@ -530,7 +601,14 @@ Here is the <lang_in> LateX source:
 /// the preprompt is in the file "prompt.txt"
 /// the api key is in the file "api_key.txt" or
 /// in the environment variable "TEXTSYNTH_API_KEY"
-fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str, model: String) -> Result<String, String> {
+fn translate_one_chunk(
+    chunk: &str,
+    input_lang: &str,
+    output_lang: &str,
+    model: String,
+    backend: &Backend,
+    api_url: &str,
+) -> Result<String, String> {
     println!("Translating chunk: {:?}", chunk);
     if chunk.trim() == r#"\commandevide"# || chunk.trim() == "" {
         println!("Empty chunk");
@@ -571,9 +649,15 @@ fn translate_one_chunk(chunk: &str, input_lang: &str, output_lang: &str, model: 
     while distmin > 1 && iter < itermax {
         // last iter without grammar
         let trs_try = if iter > itermax - 2 {
-            complete_with_ts(question.as_str(), &None, model.clone())
+            match backend {
+                Backend::TextSynth => complete_with_ts(question.as_str(), &None, model.clone()),
+                Backend::LlamaCpp => complete_with_llama(question.as_str(), &None, api_url),
+            }
         } else {
-            complete_with_ts(question.as_str(), &grammar, model.clone())
+            match backend {
+                Backend::TextSynth => complete_with_ts(question.as_str(), &grammar, model.clone()),
+                Backend::LlamaCpp => complete_with_llama(question.as_str(), &grammar, api_url),
+            }
         };
         let trs_try = match trs_try {
             Ok(s) => s,

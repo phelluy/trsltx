@@ -1,12 +1,22 @@
 # trsltx
 Tools for automatic translation of texts written with LaTeX.
 
+You need first to run a [llama.cpp](https://github.com/ggerganov/llama.cpp) server (which supports constrained inference with GBNF grammars):
+
+```bash
+./server -m <your_model.gguf> -c 4096 --host 0.0.0.0
+```
+
+`trsltx` will connect to `http://localhost:8080/completion` by default.
+
+Alternatively, you can use the [TextSynth](https://textsynth.com/) API.
 You need first to get a valid API key from [https://textsynth.com/](https://textsynth.com/)
 and put it in a file named `api_key.txt` in the working directory or in an environment variable by
 
 ```bash
 export TEXTSYNTH_API_KEY=<the_api_key>
 ```
+
 
 Usage: go in the `trsltx` directory and run (you need a working install of [Rust](https://www.rust-lang.org/tools/install))
 
@@ -35,10 +45,12 @@ trsltx -i fr -o de -f test/simple.tex
 
 `cargo install`is the recommend method: it takes into accound bug fixes both in the parser `ltxprs`and in the translator `trsltx`.
 
-The translation is completed using a Large Language Model (LLM) available on the Texsynth server. It may contain some LaTeX errors.
+**Note:** We pay tribute to the pioneering spirit of **Fabrice Bellard**, creator of TextSynth (and QEMU, FFmpeg, etc.), whose early work on constrained inference inspired this tool. Although we now prioritize `llama.cpp` for local inference, the "spirit of constraints" comes directly from his work.
+
+The translation is completed using a Large Language Model (LLM) available on a local `llama.cpp` server (default) or the TextSynth server. It may contain some LaTeX errors.
 Therefore, it is essential to review and manually correct the translated code as necessary.
 
-`trsltx` uses a unique feature of the Textsynth API, which allows the possibility to use a formal BNF grammar to constraint the generated output. 
+`trsltx` uses a unique feature of the TextSynth (and now `llama.cpp`) API, which allows the possibility to use a formal grammar to constraint the generated output. 
 See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar).
 
 The original LaTeX file is split in not too long chunks by using markers
