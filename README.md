@@ -1,5 +1,5 @@
 # trsltx
-Tools for automatic translation of texts written with LaTeX.
+Tools for the automatic translation of texts written in LaTeX, with formal grammar checking to reduce hallucinations.
 
 You need first to run a [llama.cpp](https://github.com/ggerganov/llama.cpp) server in order to access a Large Language Model (LLM). 
 See the [installation instructions](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#usage).
