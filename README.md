@@ -1,7 +1,7 @@
 # trsltx
 Tools for automatic translation of texts written with LaTeX.
 
-You need first to run a [llama.cpp](https://github.com/ggerganov/llama.cpp) server.
+You need first to run a [llama.cpp](https://github.com/ggerganov/llama.cpp) server in order to access a Large Language Model (LLM). 
 See the [installation instructions](https://github.com/ggerganov/llama.cpp?tab=readme-ov-file#usage).
 
 ```bash
@@ -48,24 +48,29 @@ trsltx -i fr -o de -f test/simple.tex
 
 `cargo install` is the recommended method: it takes into account bug fixes both in the parser `ltxprs` and in the translator `trsltx`.
 
-The translation is completed using a Large Language Model (LLM) available on a local `llama.cpp` server (default) or the TextSynth server. It may contain some LaTeX errors.
-Therefore, it is essential to review and manually correct the translated code as necessary.
+How it works: the input file is split into chunks of text using a smart splitting algorithm (based on semantic structure). The chunks are automatically translated with a LLM hosted on the local `llama.cpp` server.
+The `trsltx` tool uses a unique feature of the `llama.cpp` API, which allows the possibility to use a formal grammar to constrain the generated output. 
+See the [grammar options of `llama.cpp`](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md) (GBNF grammars).
 
-`trsltx` uses a unique feature of the `llama.cpp` API, which allows the possibility to use a formal grammar to constrain the generated output. 
-See the [grammar options of `llama.cpp`](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md) (GBNF grammars)
+Anyway, because the translation is completed using a LLM, it may still contain some LaTeX errors.
+It is recommended to review and manually correct the translated code as necessary.
 
-We recommend favoring the `--auto` option. In this mode, `trsltx` uses a smart splitting algorithm (based on semantic structure) for creating chunks of text and proceeds directly to translation of these chunks.
+By default, `trsltx` uses a smart splitting algorithm (based on semantic structure) for creating chunks of text and proceeds directly to translation of these chunks.
 
 ```bash
-cargo run -- --auto -i fr -o en -f test/simple.tex
+cargo run -- -i fr -o en -f test/simple.tex
 ```
 
-A manual splitting is possible if the `--auto` option yields unsatisfactory results.
+If the chunking is not satisfactory, manual splitting remains possible by using the `--manual` option.
 The original LaTeX file is split in not too long chunks by using markers
 `%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
 is too long. It is possible to specify a split length with the `-l` option of `trsltx`.
 In the process an intermediate file `test/simple_fr.tex` is generated with split markers.
-It is recommended to adjust the position of the markers manually.
+It is possible to adjust the position of the markers manually.
+
+```bash
+cargo run -- --manual -i fr -o en -f test/simple.tex
+```
 
 Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax (see [ltxprs](https://github.com/phelluy/ltxprs)). A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
 
