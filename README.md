@@ -8,7 +8,7 @@ See the [installation instructions](https://github.com/ggerganov/llama.cpp?tab=r
 <path_to_llama_cpp_directory>/server -m <your_model.gguf> -c 32768
 ```
 
-We recommend using the **Mistral Small 3 24B** model (`mistral-small-3.2-24b-instruct-2409.Q4_K_M.gguf` or similar quantization), which gives excellent results for LaTeX translation.
+We recommend using the **Mistral Small 3 24B** model (`mistral-small-3.2-24b-instruct-2409.Q4_K_M.gguf` or similar quantization), which gives excellent results for LaTeX translation. Smaller models should also work fine.
 
 `trsltx` will connect to `http://localhost:8080/completion` by default.
 
@@ -46,31 +46,30 @@ trsltx --help
 trsltx -i fr -o de -f test/simple.tex
 ```
 
-`cargo install`is the recommend method: it takes into accound bug fixes both in the parser `ltxprs`and in the translator `trsltx`.
-
-**Note:** We pay tribute to the pioneering spirit of **Fabrice Bellard**, creator of TextSynth (and QEMU, FFmpeg, etc.), whose early work on constrained inference inspired this tool. Although we now prioritize `llama.cpp` for local inference, the "spirit of constraints" comes directly from his work.
+`cargo install` is the recommended method: it takes into account bug fixes both in the parser `ltxprs` and in the translator `trsltx`.
 
 The translation is completed using a Large Language Model (LLM) available on a local `llama.cpp` server (default) or the TextSynth server. It may contain some LaTeX errors.
 Therefore, it is essential to review and manually correct the translated code as necessary.
 
-`trsltx` uses a unique feature of the TextSynth (and now `llama.cpp`) API, which allows the possibility to use a formal grammar to constraint the generated output. 
-See [https://textsynth.com/documentation.html#grammar](https://textsynth.com/documentation.html#grammar)  and the [grammar options of `llama.cpp`](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md) (GBNF grammars)
+`trsltx` uses a unique feature of the `llama.cpp` API, which allows the possibility to use a formal grammar to constrain the generated output. 
+See the [grammar options of `llama.cpp`](https://github.com/ggerganov/llama.cpp/blob/master/grammars/README.md) (GBNF grammars)
 
-The original LaTeX file is split in not too long chunks by using markers
-`%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
-is too long. It is possible to specify a split length with the `-l` option of `trsltx`.
-In the process an intermediate file `test/simple_fr.tex` is generated with split markers.
-By default, the automatic split is not very powerful. It is recommended to adjust the position of the
-markers manually if the translation is not satisfactory.
+We recommend favoring the `--auto` option. In this mode, `trsltx` uses a smart splitting algorithm (based on semantic structure) for creating chunks of text and proceeds directly to translation of these chunks.
 
-However, you can use the `--auto` option to bypass the manual review step. In this mode, `trsltx` uses a smart splitting algorithm (based on semantic structure) and proceeds directly to translation.
 ```bash
 cargo run -- --auto -i fr -o en -f test/simple.tex
 ```
 
+A manual splitting is possible if the `--auto` option yields unsatisfactory results.
+The original LaTeX file is split in not too long chunks by using markers
+`%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
+is too long. It is possible to specify a split length with the `-l` option of `trsltx`.
+In the process an intermediate file `test/simple_fr.tex` is generated with split markers.
+It is recommended to adjust the position of the markers manually.
+
 Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax (see [ltxprs](https://github.com/phelluy/ltxprs)). A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
 
-The grammar function is deactivated if the light syntax analyser fails. The chunk is partially translated if the server returns an error. In this case, the translation must be corrected manually...
+The grammar function is deactivated if the light syntax analyzer fails. The chunk is partially translated if the server returns an error. In this case, the translation must be corrected manually...
 
 It is also possible to mark a region that should not be translated with the markers
 `%trsltx-begin-ignore` and `%trsltx-end-ignore` on single lines. Ignored regions should not contain
@@ -84,7 +83,7 @@ Here are a few tips for improved results:
 * Give meaningful names to your macros for helping the translator (e.g. don't call a macro that displays the energy `\foo`. A better choice is `\energy`!).
 * Don't use alternatives to the following commands: `\cite`, `\label`, `\ref`. Otherwise, the labels, refs and citations may be lost in translation.
 * Avoid using `%trsltx-split` in the middle of math formulas, `{...}` groups or `\begin ... \end` environments. 
-* The parser has other limitations (such has `\verbatim` envs). See [ltxprs](https://github.com/phelluy/ltxprs) for limitations and possible workarounds.
+* The parser has other limitations (such as `\verbatim` envs). See [ltxprs](https://github.com/phelluy/ltxprs) for limitations and possible workarounds.
  
-
+**Note:** We pay tribute to the pioneering spirit of **Fabrice Bellard**, creator of TextSynth (and QEMU, FFmpeg, etc.), whose early work on constrained inference inspired this tool.
 
