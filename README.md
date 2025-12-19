@@ -8,6 +8,8 @@ See the [installation instructions](https://github.com/ggerganov/llama.cpp?tab=r
 <path_to_llama_cpp_directory>/server -m <your_model.gguf> -c 32768
 ```
 
+We recommend using the **Mistral Small 3 24B** model (`mistral-small-3.2-24b-instruct-2409.Q4_K_M.gguf` or similar quantization), which gives excellent results for LaTeX translation.
+
 `trsltx` will connect to `http://localhost:8080/completion` by default.
 
 Alternatively, you can use the [TextSynth](https://textsynth.com/) API.
@@ -58,8 +60,13 @@ The original LaTeX file is split in not too long chunks by using markers
 `%trsltx-split` in the .tex file on single lines. `trsltx` will complain if a chunk
 is too long. It is possible to specify a split length with the `-l` option of `trsltx`.
 In the process an intermediate file `test/simple_fr.tex` is generated with split markers.
-For now, the automatic split is not very powerful. It is recomended to adjust the position of the
+By default, the automatic split is not very powerful. It is recommended to adjust the position of the
 markers manually if the translation is not satisfactory.
+
+However, you can use the `--auto` option to bypass the manual review step. In this mode, `trsltx` uses a smart splitting algorithm (based on semantic structure) and proceeds directly to translation.
+```bash
+cargo run -- --auto -i fr -o en -f test/simple.tex
+```
 
 Each chunk is analyzed using a lightweight parser for a subset of the LaTeX syntax (see [ltxprs](https://github.com/phelluy/ltxprs)). A special grammar is generated for each fragment, which encourages the LLM to stick to the original text. This discourages invented labels, references or citations. In addition, LaTeX commands that are not in the original text are less likely to be generated.
 
